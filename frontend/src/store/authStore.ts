@@ -9,6 +9,7 @@ interface UserInfo {
   credits: number
   plan: string
   avatar?: string | null
+  created_at?: string
 }
 
 interface AuthState {
