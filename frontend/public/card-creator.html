@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Card Creator Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a0f;--surface:#111118;--surface2:#1a1a24;--border:#2a2a38;--gold:#e8c96d;--gold-dim:#b89d4a;--text:#e8e8f0;--text-muted:#7a7a8c;--danger:#ff4d6a;--success:#4dff88}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
+input,textarea,select,button{font-family:inherit;font-size:inherit}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar h1{font-family:'Playfair Display',serif;font-size:16px;color:var(--gold);font-weight:700;flex:1}
+.topbar-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
+.topbar-btn:hover{border-color:var(--gold);color:var(--gold)}
+.topbar-btn.primary{background:var(--gold);color:#000;border-color:var(--gold)}
+.topbar-btn.primary:hover{background:var(--gold-dim)}
+
+/* ── MAIN LAYOUT ── */
+.main{display:flex;flex:1;min-height:0;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{width:280px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+.section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px}
+.field-label{font-size:11px;color:var(--text-muted);margin-bottom:4px}
+.field-input{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);outline:none;transition:border .15s}
+.field-input:focus{border-color:var(--gold)}
+textarea.field-input{resize:none;min-height:48px}
+.color-row{display:flex;gap:6px;flex-wrap:wrap}
+.color-swatch{width:28px;height:28px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.color-swatch:hover,.color-swatch.active{border-color:var(--gold);transform:scale(1.1)}
+.slider-row{display:flex;align-items:center;gap:8px}
+.slider-row input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:var(--border);border-radius:2px;outline:none}
+.slider-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--gold);cursor:pointer}
+.slider-val{font-size:11px;color:var(--text-muted);min-width:30px;text-align:right}
+.preset-chips{display:flex;gap:6px;flex-wrap:wrap}
+.preset-chip{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;font-size:11px;transition:all .15s}
+.preset-chip:hover{border-color:var(--gold);color:var(--text)}
+
+/* AI section */
+.ai-btn{width:100%;padding:8px;border-radius:8px;border:none;background:var(--gold);color:#000;font-weight:700;cursor:pointer;font-size:12px;transition:background .15s}
+.ai-btn:hover{background:var(--gold-dim)}
+.ai-btn:disabled{opacity:.5;cursor:not-allowed}
+.ai-suggestions{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.ai-chip{padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;transition:all .15s}
+.ai-chip:hover{border-color:var(--gold);background:rgba(232,201,109,0.08)}
+.ai-chip .chip-line1{font-family:'Playfair Display',serif;font-size:12px;font-weight:700;color:var(--text)}
+.ai-chip .chip-line2{font-size:10px;color:var(--text-muted);margin-top:2px}
+.ai-chip .chip-discount{font-family:'Playfair Display',serif;font-size:14px;font-weight:900;color:var(--gold);margin-top:2px}
+
+/* ── CANVAS AREA ── */
+.canvas-area{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;background:radial-gradient(circle at 30% 30%,#12121a 0%,var(--bg) 70%);padding:24px;position:relative}
+#canvas{position:relative;width:600px;height:450px;background:#1a1a1a;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,.6);overflow:hidden}
+#canvas-bg{position:absolute;inset:0;object-fit:cover;width:100%;height:100%;pointer-events:none}
+
+/* ── PROMO CARDS ── */
+.promo-card{position:absolute;cursor:move;border-radius:10px;padding:20px 24px;min-width:160px;min-height:90px;transition:box-shadow .15s}
+.promo-card.selected{box-shadow:0 0 0 2px var(--gold) !important}
+.promo-card .card-line1{font-family:'Playfair Display',serif;font-weight:700;line-height:1.2;margin-bottom:2px}
+.promo-card .card-line2{font-family:'DM Sans',sans-serif;font-weight:400;line-height:1.3;opacity:.85;margin-bottom:6px}
+.promo-card .card-discount{font-family:'Playfair Display',serif;font-weight:900;line-height:1}
+.promo-card .resize-handle{position:absolute;bottom:0;right:0;width:14px;height:14px;cursor:nwse-resize;opacity:0;transition:opacity .15s}
+.promo-card.selected .resize-handle{opacity:1}
+.promo-card .resize-handle::after{content:'';position:absolute;bottom:3px;right:3px;width:8px;height:8px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);opacity:.6}
+.promo-card .delete-btn{position:absolute;top:-8px;right:-8px;width:18px;height:18px;border-radius:50%;background:var(--danger);color:#fff;border:none;cursor:pointer;font-size:10px;display:none;align-items:center;justify-content:center;line-height:1}
+.promo-card.selected .delete-btn{display:flex}
+
+/* ── BOTTOMBAR ── */
+.bottombar{display:flex;align-items:center;gap:16px;padding:8px 20px;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0;font-size:11px;color:var(--text-muted)}
+.bottombar .status{flex:1}
+.bottombar .hint{opacity:.5}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <h1>✦ Card Creator Pro</h1>
+  <label class="topbar-btn" id="uploadBgBtn">
+    🖼 Background
+    <input type="file" accept="image/*" id="bgInput" hidden>
+  </label>
+  <button class="topbar-btn" id="addCardBtn">+ Add Card</button>
+  <button class="topbar-btn" id="duplicateBtn">⧉ Duplicate</button>
+  <button class="topbar-btn primary" id="downloadBtn">⬇ Download PNG</button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <!-- Card text -->
+    <div>
+      <div class="section-title">Card Text</div>
+      <div class="field-label">Title (Line 1)</div>
+      <input class="field-input" id="line1Input" placeholder="NEW COLLECTION">
+      <div class="field-label" style="margin-top:8px">Subtitle (Line 2)</div>
+      <input class="field-input" id="line2Input" placeholder="Timeless Elegance">
+      <div class="field-label" style="margin-top:8px">Discount / CTA</div>
+      <input class="field-input" id="discountInput" placeholder="50% OFF">
+    </div>
+
+    <!-- Card color presets -->
+    <div>
+      <div class="section-title">Card Color Preset</div>
+      <div class="color-row" id="presetRow"></div>
+    </div>
+
+    <!-- Custom colors -->
+    <div>
+      <div class="section-title">Custom Colors</div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1">
+          <div class="field-label">Background</div>
+          <input type="color" id="bgColorPicker" value="#1a1a2e" style="width:100%;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer">
+        </div>
+        <div style="flex:1">
+          <div class="field-label">Text</div>
+          <input type="color" id="textColorPicker" value="#ffffff" style="width:100%;height:32px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer">
+        </div>
+      </div>
+    </div>
+
+    <!-- Opacity -->
+    <div>
+      <div class="section-title">Opacity</div>
+      <div class="slider-row">
+        <input type="range" id="opacitySlider" min="0" max="100" value="90">
+        <span class="slider-val" id="opacityVal">90%</span>
+      </div>
+    </div>
+
+    <!-- Font size -->
+    <div>
+      <div class="section-title">Font Sizes</div>
+      <div class="field-label">Title</div>
+      <div class="slider-row">
+        <input type="range" id="titleSizeSlider" min="12" max="48" value="22">
+        <span class="slider-val" id="titleSizeVal">22px</span>
+      </div>
+      <div class="field-label" style="margin-top:6px">Subtitle</div>
+      <div class="slider-row">
+        <input type="range" id="subtitleSizeSlider" min="10" max="32" value="13">
+        <span class="slider-val" id="subtitleSizeVal">13px</span>
+      </div>
+      <div class="field-label" style="margin-top:6px">Discount / CTA</div>
+      <div class="slider-row">
+        <input type="range" id="discountSizeSlider" min="16" max="72" value="36">
+        <span class="slider-val" id="discountSizeVal">36px</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-area" id="canvasArea">
+    <div id="canvas">
+      <img id="canvas-bg" src="" style="display:none">
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOMBAR -->
+<div class="bottombar">
+  <div class="status" id="statusBar">Ready — Click "Add Card" to start</div>
+  <div class="hint">Drag to move · Resize from corner · Click to select</div>
+</div>
+
+<script>
+const COLOR_PRESETS = [
+  { name:'Red',   bg:'#8b1a1a', text:'#ffffff' },
+  { name:'Gold',  bg:'#2a2210', text:'#e8c96d' },
+  { name:'Dark',  bg:'#1a1a2e', text:'#ffffff' },
+  { name:'White', bg:'#ffffff', text:'#1a1a2e' },
+  { name:'Pink',  bg:'#3d1a2e', text:'#ffb6c1' },
+  { name:'Green', bg:'#1a2e1a', text:'#90ee90' },
+];
+
+let cards = [];
+let selectedId = null;
+let dragState = null;
+let resizeState = null;
+let cardIdCounter = 0;
+
+const $ = s => document.querySelector(s);
+const canvas = $('#canvas');
+const canvasBg = $('#canvas-bg');
+const statusBar = $('#statusBar');
+
+// ── PRESETS ──
+const presetRow = $('#presetRow');
+COLOR_PRESETS.forEach((p, i) => {
+  const sw = document.createElement('div');
+  sw.className = 'color-swatch';
+  sw.style.background = p.bg;
+  sw.title = p.name;
+  sw.onclick = () => applyPreset(i);
+  presetRow.appendChild(sw);
+});
+
+function applyPreset(i) {
+  const p = COLOR_PRESETS[i];
+  document.querySelectorAll('.color-swatch').forEach((s,j) => s.classList.toggle('active', j===i));
+  $('#bgColorPicker').value = p.bg;
+  $('#textColorPicker').value = p.text;
+  updateSelectedCard();
+}
+
+// ── BACKGROUND ──
+$('#bgInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  canvasBg.src = url;
+  canvasBg.style.display = 'block';
+  statusBar.textContent = 'Background image loaded';
+});
+
+// ── ADD CARD ──
+$('#addCardBtn').addEventListener('click', () => addCard());
+
+function addCard(data) {
+  const id = ++cardIdCounter;
+  const card = {
+    id,
+    x: 40 + (cards.length % 3) * 30,
+    y: 40 + (cards.length % 3) * 30,
+    w: 220,
+    h: 140,
+    line1: data?.line1 || 'NEW COLLECTION',
+    line2: data?.line2 || 'Timeless Elegance',
+    discount: data?.discount || '50% OFF',
+    bg: $('#bgColorPicker').value,
+    text: $('#textColorPicker').value,
+    opacity: parseInt($('#opacitySlider').value),
+    titleSize: parseInt($('#titleSizeSlider').value),
+    subtitleSize: parseInt($('#subtitleSizeSlider').value),
+    discountSize: parseInt($('#discountSizeSlider').value),
+  };
+  cards.push(card);
+  renderCard(card);
+  selectCard(id);
+  statusBar.textContent = `Card #${id} added`;
+}
+
+function renderCard(c) {
+  const el = document.createElement('div');
+  el.className = 'promo-card';
+  el.id = `card-${c.id}`;
+  el.style.left = c.x + 'px';
+  el.style.top = c.y + 'px';
+  el.style.width = c.w + 'px';
+  el.style.minHeight = c.h + 'px';
+  updateCardStyle(el, c);
+
+  el.innerHTML = `
+    <div class="card-line1" style="font-size:${c.titleSize}px">${c.line1}</div>
+    <div class="card-line2" style="font-size:${c.subtitleSize}px">${c.line2}</div>
+    <div class="card-discount" style="font-size:${c.discountSize}px">${c.discount}</div>
+    <div class="resize-handle"></div>
+    <button class="delete-btn" onclick="deleteCard(${c.id})">×</button>
+  `;
+
+  el.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('resize-handle')) {
+      resizeState = { id: c.id, startX: e.clientX, startY: e.clientY, startW: c.w, startH: parseInt(el.style.minHeight) };
+      e.stopPropagation();
+      return;
+    }
+    if (e.target.classList.contains('delete-btn')) return;
+    selectCard(c.id);
+    dragState = { id: c.id, startX: e.clientX - c.x, startY: e.clientY - c.y };
+  });
+
+  canvas.appendChild(el);
+}
+
+function updateCardStyle(el, c) {
+  const r = parseInt(c.bg.slice(1,3),16), g = parseInt(c.bg.slice(3,5),16), b = parseInt(c.bg.slice(5,7),16);
+  el.style.background = `rgba(${r},${g},${b},${c.opacity/100})`;
+  el.style.color = c.text;
+  if (c.opacity < 100) el.style.backdropFilter = 'blur(8px)';
+  else el.style.backdropFilter = 'none';
+}
+
+function selectCard(id) {
+  selectedId = id;
+  document.querySelectorAll('.promo-card').forEach(el => el.classList.remove('selected'));
+  const el = $(`#card-${id}`);
+  if (el) el.classList.add('selected');
+
+  const c = cards.find(c => c.id === id);
+  if (!c) return;
+  $('#line1Input').value = c.line1;
+  $('#line2Input').value = c.line2;
+  $('#discountInput').value = c.discount;
+  $('#bgColorPicker').value = c.bg;
+  $('#textColorPicker').value = c.text;
+  $('#opacitySlider').value = c.opacity;
+  $('#opacityVal').textContent = c.opacity + '%';
+  $('#titleSizeSlider').value = c.titleSize;
+  $('#titleSizeVal').textContent = c.titleSize + 'px';
+  $('#subtitleSizeSlider').value = c.subtitleSize;
+  $('#subtitleSizeVal').textContent = c.subtitleSize + 'px';
+  $('#discountSizeSlider').value = c.discountSize;
+  $('#discountSizeVal').textContent = c.discountSize + 'px';
+}
+
+window.deleteCard = function(id) {
+  cards = cards.filter(c => c.id !== id);
+  const el = $(`#card-${id}`);
+  if (el) el.remove();
+  if (selectedId === id) selectedId = null;
+  statusBar.textContent = `Card deleted`;
+}
+
+// ── DRAG + RESIZE ──
+document.addEventListener('mousemove', e => {
+  if (dragState) {
+    const c = cards.find(c => c.id === dragState.id);
+    if (!c) return;
+    c.x = Math.max(0, Math.min(600 - c.w, e.clientX - dragState.startX));
+    c.y = Math.max(0, Math.min(450 - 60, e.clientY - dragState.startY));
+    const el = $(`#card-${c.id}`);
+    el.style.left = c.x + 'px';
+    el.style.top = c.y + 'px';
+    statusBar.textContent = `Card #${c.id} — X: ${Math.round(c.x)} Y: ${Math.round(c.y)}`;
+  }
+  if (resizeState) {
+    const c = cards.find(c => c.id === resizeState.id);
+    if (!c) return;
+    c.w = Math.max(140, resizeState.startW + (e.clientX - resizeState.startX));
+    c.h = Math.max(80, resizeState.startH + (e.clientY - resizeState.startY));
+    const el = $(`#card-${c.id}`);
+    el.style.width = c.w + 'px';
+    el.style.minHeight = c.h + 'px';
+    statusBar.textContent = `Resizing — W: ${Math.round(c.w)} H: ${Math.round(c.h)}`;
+  }
+});
+document.addEventListener('mouseup', () => { dragState = null; resizeState = null; });
+
+// Deselect on canvas click
+$('#canvasArea').addEventListener('mousedown', e => {
+  if (e.target === $('#canvasArea') || e.target === canvas || e.target === canvasBg) {
+    selectedId = null;
+    document.querySelectorAll('.promo-card').forEach(el => el.classList.remove('selected'));
+  }
+});
+
+// ── SIDEBAR CONTROLS → LIVE UPDATE ──
+function updateSelectedCard() {
+  if (!selectedId) return;
+  const c = cards.find(c => c.id === selectedId);
+  if (!c) return;
+  const el = $(`#card-${c.id}`);
+  if (!el) return;
+
+  c.line1 = $('#line1Input').value;
+  c.line2 = $('#line2Input').value;
+  c.discount = $('#discountInput').value;
+  c.bg = $('#bgColorPicker').value;
+  c.text = $('#textColorPicker').value;
+  c.opacity = parseInt($('#opacitySlider').value);
+  c.titleSize = parseInt($('#titleSizeSlider').value);
+  c.subtitleSize = parseInt($('#subtitleSizeSlider').value);
+  c.discountSize = parseInt($('#discountSizeSlider').value);
+
+  el.querySelector('.card-line1').textContent = c.line1;
+  el.querySelector('.card-line1').style.fontSize = c.titleSize + 'px';
+  el.querySelector('.card-line2').textContent = c.line2;
+  el.querySelector('.card-line2').style.fontSize = c.subtitleSize + 'px';
+  el.querySelector('.card-discount').textContent = c.discount;
+  el.querySelector('.card-discount').style.fontSize = c.discountSize + 'px';
+  updateCardStyle(el, c);
+}
+
+['line1Input','line2Input','discountInput'].forEach(id => $(('#'+id)).addEventListener('input', updateSelectedCard));
+['bgColorPicker','textColorPicker'].forEach(id => $(('#'+id)).addEventListener('input', updateSelectedCard));
+$('#opacitySlider').addEventListener('input', e => { $('#opacityVal').textContent = e.target.value+'%'; updateSelectedCard(); });
+$('#titleSizeSlider').addEventListener('input', e => { $('#titleSizeVal').textContent = e.target.value+'px'; updateSelectedCard(); });
+$('#subtitleSizeSlider').addEventListener('input', e => { $('#subtitleSizeVal').textContent = e.target.value+'px'; updateSelectedCard(); });
+$('#discountSizeSlider').addEventListener('input', e => { $('#discountSizeVal').textContent = e.target.value+'px'; updateSelectedCard(); });
+
+// ── DUPLICATE ──
+$('#duplicateBtn').addEventListener('click', () => {
+  if (!selectedId) { statusBar.textContent = 'Select a card first'; return; }
+  const c = cards.find(c => c.id === selectedId);
+  if (!c) return;
+  addCard({ line1: c.line1, line2: c.line2, discount: c.discount });
+});
+
+// ── DOWNLOAD ──
+$('#downloadBtn').addEventListener('click', async () => {
+  statusBar.textContent = 'Exporting PNG...';
+  document.querySelectorAll('.promo-card').forEach(el => el.classList.remove('selected'));
+  await new Promise(r => setTimeout(r, 50));
+  try {
+    const c = await html2canvas(canvas, { useCORS: true, scale: 2, backgroundColor: null });
+    const link = document.createElement('a');
+    link.download = 'card-creative.png';
+    link.href = c.toDataURL('image/png');
+    link.click();
+    statusBar.textContent = 'PNG downloaded!';
+  } catch(e) {
+    statusBar.textContent = 'Export failed: ' + e.message;
+  }
+});
+
+
+// ── INIT: add one card ──
+addCard();
+</script>
+</body>
+</html>

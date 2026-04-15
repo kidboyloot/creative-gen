@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Image Text Translator</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #111114;
+    --surface: #1c1c21;
+    --surface2: #26262e;
+    --border: #35353f;
+    --accent: #7c6af7;
+    --accent-hover: #9585fa;
+    --text: #e8e8f0;
+    --text-muted: #7a7a8c;
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 13px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px; border: none;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, opacity 0.15s;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover:not(:disabled) { background: #2f2f3a; }
+
+  .workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ── SIDEBAR ── */
+  aside {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .s-section {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .s-section h2 {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-size: 13px;
+    padding: 7px 10px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a7a8c' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+  select:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+
+  /* status pills */
+  .step-list { display: flex; flex-direction: column; gap: 6px; }
+  .step-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 12px; font-weight: 600;
+    color: var(--text-muted);
+    background: transparent;
+    transition: all 0.2s;
+  }
+  .step-pill .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .step-pill.active { color: var(--text); background: var(--surface2); }
+  .step-pill.active .dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .step-pill.done { color: var(--text-muted); }
+  .step-pill.done .dot { background: var(--green); }
+
+  /* ── MAIN ── */
+  main {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+  .panel.active { display: flex; }
+
+  /* ── UPLOAD PANEL ── */
+  #p-upload {
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    background:
+      radial-gradient(circle at 20% 30%, #1a1730 0%, transparent 55%),
+      radial-gradient(circle at 80% 70%, #161625 0%, transparent 55%),
+      var(--bg);
+  }
+  .drop-zone {
+    width: 100%;
+    max-width: 520px;
+    border: 2px dashed var(--border);
+    border-radius: 18px;
+    padding: 56px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    color: var(--text-muted);
+  }
+  .drop-zone:hover, .drop-zone.over {
+    border-color: var(--accent);
+    background: rgba(124,106,247,0.04);
+    color: var(--text);
+  }
+  .drop-zone svg { opacity: 0.5; margin-bottom: 16px; }
+  .drop-zone p { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .drop-zone span { font-size: 12px; opacity: 0.6; }
+  .formats { display: flex; gap: 8px; justify-content: center; margin-top: 18px; }
+  .fmt-badge {
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  /* ── PROCESSING PANEL ── */
+  #p-processing {
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    background: var(--bg);
+  }
+  .loader-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    min-width: 320px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 44px; height: 44px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 20px;
+  }
+  #status-msg { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+  .progress-bar {
+    width: 100%;
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  #progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.3s;
+  }
+  #progress-pct { font-size: 12px; color: var(--text-muted); }
+
+  /* ── REVIEW PANEL ── */
+  #p-review {
+    flex-direction: row;
+    overflow: hidden;
+  }
+  .img-pane {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px;
+    background:
+      radial-gradient(circle at 30% 40%, #1a1730 0%, transparent 60%),
+      var(--bg);
+    min-width: 0;
+  }
+  #preview-canvas {
+    max-width: 100%;
+    border-radius: 6px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    cursor: crosshair;
+  }
+  .review-pane {
+    width: 340px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .review-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .review-head h3 { font-size: 13px; font-weight: 700; flex: 1; }
+  .review-head .count { font-size: 12px; color: var(--text-muted); }
+  .blocks-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .block-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .block-item:hover { border-color: rgba(124,106,247,0.5); }
+  .block-item.highlighted { border-color: var(--accent); background: #1e1b3a; }
+  .block-item.skipped { opacity: 0.45; }
+  .bi-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 7px;
+  }
+  .bi-num {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .bi-conf {
+    font-size: 10px;
+    color: var(--text-muted);
+    flex: 1;
+  }
+  .skip-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .skip-toggle input { width: 12px; height: 12px; accent-color: var(--accent); cursor: pointer; }
+  .bi-orig {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  textarea.bi-trans {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 6px 8px;
+    resize: vertical;
+    min-height: 48px;
+    outline: none;
+    font-family: inherit;
+    line-height: 1.4;
+    transition: border-color 0.15s;
+  }
+  textarea.bi-trans:focus { border-color: var(--accent); }
+  .review-footer {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .review-footer .btn { width: 100%; justify-content: center; }
+
+  /* ── RESULT PANEL ── */
+  #p-result {
+    align-items: center;
+    justify-content: flex-start;
+    padding: 24px;
+    overflow-y: auto;
+    gap: 20px;
+    background:
+      radial-gradient(circle at 20% 30%, #1a1730 0%, transparent 55%),
+      var(--bg);
+    flex-direction: column;
+  }
+  .result-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  #result-canvas {
+    max-width: 100%;
+    border-radius: 6px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.6);
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(16px);
+    background: #2a2a35;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 13px;
+    color: var(--text);
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* mobile layout */
+  @media (max-width: 700px) {
+    #p-review { flex-direction: column; }
+    .review-pane { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 50vh; }
+    .img-pane { min-height: 200px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="3" width="18" height="18" rx="2" stroke="var(--accent)" stroke-width="2"/>
+      <path d="M7 8h5M7 12h10M7 16h7" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    Image Text Translator
+  </h1>
+  <button id="new-btn" class="btn btn-ghost" style="display:none">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    New Image
+  </button>
+  <button id="export-btn" class="btn btn-primary" style="display:none">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Export PNG
+  </button>
+</header>
+
+<div class="workspace">
+  <aside>
+    <div class="s-section">
+      <h2>Source Language</h2>
+      <select id="src-lang"></select>
+    </div>
+    <div class="s-section">
+      <h2>Target Language</h2>
+      <select id="tgt-lang"></select>
+    </div>
+    <div class="s-section">
+      <h2>Progress</h2>
+      <div class="step-list">
+        <div class="step-pill active" data-step="upload">
+          <div class="dot"></div> Upload image
+        </div>
+        <div class="step-pill" data-step="ocr">
+          <div class="dot"></div> Detect text
+        </div>
+        <div class="step-pill" data-step="translate">
+          <div class="dot"></div> Translate
+        </div>
+        <div class="step-pill" data-step="review">
+          <div class="dot"></div> Review
+        </div>
+        <div class="step-pill" data-step="apply">
+          <div class="dot"></div> Apply &amp; export
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <!-- UPLOAD -->
+    <div class="panel active" id="p-upload">
+      <div class="drop-zone" id="drop-zone">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style="display:block;margin:0 auto;">
+          <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 16l5-5 4 4 2-2 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p>Drop an image here</p>
+        <span>or click to browse</span>
+        <div class="formats">
+          <span class="fmt-badge">JPG</span>
+          <span class="fmt-badge">PNG</span>
+          <span class="fmt-badge">WEBP</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROCESSING -->
+    <div class="panel" id="p-processing">
+      <div class="loader-card">
+        <div class="spinner"></div>
+        <div id="status-msg">Detecting text…</div>
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+        <div id="progress-pct">0%</div>
+      </div>
+    </div>
+
+    <!-- REVIEW -->
+    <div class="panel" id="p-review">
+      <div class="img-pane">
+        <canvas id="preview-canvas"></canvas>
+      </div>
+      <div class="review-pane">
+        <div class="review-head">
+          <h3>Translations</h3>
+          <span class="count" id="block-count"></span>
+        </div>
+        <div class="blocks-list" id="blocks-list"></div>
+        <div class="review-footer">
+          <button id="apply-btn" class="btn btn-primary">Apply &amp; Render</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="panel" id="p-result">
+      <div class="result-actions">
+        <button id="back-btn" class="btn btn-ghost">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Back to Review
+        </button>
+        <button id="export-btn2" class="btn btn-primary">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Export PNG
+        </button>
+      </div>
+      <canvas id="result-canvas"></canvas>
+    </div>
+  </main>
+</div>
+
+<input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" style="display:none">
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+//  LANGUAGES
+// ─────────────────────────────────────────────
+const LANGS = [
+  { api: 'en',  tess: 'eng', label: 'English'    },
+  { api: 'pt',  tess: 'por', label: 'Portuguese'  },
+  { api: 'es',  tess: 'spa', label: 'Spanish'     },
+  { api: 'fr',  tess: 'fra', label: 'French'      },
+  { api: 'de',  tess: 'deu', label: 'German'      },
+  { api: 'it',  tess: 'ita', label: 'Italian'     },
+  { api: 'el',  tess: 'ell', label: 'Greek'       },
+  { api: 'nl',  tess: 'nld', label: 'Dutch'       },
+  { api: 'pl',  tess: 'pol', label: 'Polish'      },
+  { api: 'fi',  tess: 'fin', label: 'Finnish'     },
+];
+
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let srcLang = LANGS[0];
+let tgtLang = LANGS[1];
+let currentImage  = null;   // HTMLImageElement
+let blocks        = [];     // [{text, translated, skip, bbox, conf}]
+let highlightIdx  = -1;
+let displayScale  = 1;
+
+// ─────────────────────────────────────────────
+//  DOM
+// ─────────────────────────────────────────────
+const srcSel        = document.getElementById('src-lang');
+const tgtSel        = document.getElementById('tgt-lang');
+const dropZone      = document.getElementById('drop-zone');
+const fileInput     = document.getElementById('file-input');
+const statusMsg     = document.getElementById('status-msg');
+const progressFill  = document.getElementById('progress-fill');
+const progressPct   = document.getElementById('progress-pct');
+const previewCanvas = document.getElementById('preview-canvas');
+const blocksList    = document.getElementById('blocks-list');
+const blockCount    = document.getElementById('block-count');
+const resultCanvas  = document.getElementById('result-canvas');
+const applyBtn      = document.getElementById('apply-btn');
+const exportBtn     = document.getElementById('export-btn');
+const exportBtn2    = document.getElementById('export-btn2');
+const newBtn        = document.getElementById('new-btn');
+const backBtn       = document.getElementById('back-btn');
+const toast         = document.getElementById('toast');
+
+// ─────────────────────────────────────────────
+//  INIT LANGUAGE SELECTORS
+// ─────────────────────────────────────────────
+LANGS.forEach((l, i) => {
+  const o1 = new Option(l.label, i); if (i === 0) o1.selected = true;
+  const o2 = new Option(l.label, i); if (i === 1) o2.selected = true;
+  srcSel.appendChild(o1);
+  tgtSel.appendChild(o2);
+});
+srcSel.addEventListener('change', () => { srcLang = LANGS[+srcSel.value]; });
+tgtSel.addEventListener('change', () => { tgtLang = LANGS[+tgtSel.value]; });
+
+// ─────────────────────────────────────────────
+//  TOAST
+// ─────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+}
+
+// ─────────────────────────────────────────────
+//  PANEL / STEP SWITCHING
+// ─────────────────────────────────────────────
+const STEPS = ['upload','ocr','translate','review','apply'];
+
+function setPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('p-' + id).classList.add('active');
+}
+
+function setStep(step) {
+  const idx = STEPS.indexOf(step);
+  document.querySelectorAll('.step-pill').forEach((pill, i) => {
+    pill.classList.remove('active', 'done');
+    if (i < idx)       pill.classList.add('done');
+    else if (i === idx) pill.classList.add('active');
+  });
+}
+
+function setProgress(pct, msg) {
+  progressFill.style.width = pct + '%';
+  progressPct.textContent  = Math.round(pct) + '%';
+  if (msg) statusMsg.textContent = msg;
+}
+
+// ─────────────────────────────────────────────
+//  UPLOAD
+// ─────────────────────────────────────────────
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) handleFile(fileInput.files[0]);
+});
+
+// Touch tap on drop zone
+dropZone.addEventListener('touchend', e => { e.preventDefault(); fileInput.click(); });
+
+function handleFile(file) {
+  if (!file.type.match(/image\/(jpeg|png|webp)/)) {
+    showToast('Please upload a JPG, PNG, or WEBP image');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      currentImage = img;
+      startPipeline(img);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─────────────────────────────────────────────
+//  PIPELINE
+// ─────────────────────────────────────────────
+async function startPipeline(img) {
+  newBtn.style.display    = '';
+  exportBtn.style.display = 'none';
+  setPanel('processing');
+  setProgress(0, 'Loading OCR engine…');
+  setStep('ocr');
+
+  try {
+    await runOCR(img);
+    await translateAll();
+    showReview();
+  } catch (err) {
+    console.error(err);
+    showToast('Error: ' + err.message);
+    resetToUpload();
+  }
+}
+
+// ─────────────────────────────────────────────
+//  OCR
+// ─────────────────────────────────────────────
+async function runOCR(img) {
+  statusMsg.textContent = 'Detecting text…';
+
+  const result = await Tesseract.recognize(
+    img.src,
+    srcLang.tess,
+    {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          setProgress(m.progress * 60, 'Detecting text… ' + Math.round(m.progress * 100) + '%');
+        } else if (m.status === 'loading tesseract core' || m.status === 'loading language traineddata') {
+          setProgress(m.progress * 20, 'Loading OCR engine…');
+        } else if (m.status === 'initializing api') {
+          setProgress(25, 'Initializing…');
+        }
+      }
+    }
+  );
+
+  setProgress(60, 'Processing results…');
+
+  // Use paragraphs as translation units
+  const rawBlocks = result.data.paragraphs || [];
+
+  blocks = rawBlocks
+    .filter(p => p.text.trim().length >= 2 && p.confidence > 25)
+    .map(p => ({
+      text:       p.text.replace(/\n/g, ' ').trim(),
+      translated: '',
+      skip:       false,
+      bbox:       p.bbox,   // {x0, y0, x1, y1}
+      conf:       Math.round(p.confidence),
+    }))
+    .filter(b => /\S/.test(b.text));
+
+  if (blocks.length === 0) {
+    showToast('No text detected. Try a clearer image or a different source language.');
+    resetToUpload();
+    throw new Error('No text blocks found');
+  }
+}
+
+// ─────────────────────────────────────────────
+//  TRANSLATION
+// ─────────────────────────────────────────────
+async function translateAll() {
+  setStep('translate');
+
+  for (let i = 0; i < blocks.length; i++) {
+    const pct  = 60 + ((i / blocks.length) * 38);
+    const msg  = `Translating block ${i + 1} of ${blocks.length}…`;
+    setProgress(pct, msg);
+
+    const text = blocks[i].text.trim();
+    if (!text) { blocks[i].translated = ''; continue; }
+
+    try {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${srcLang.api}|${tgtLang.api}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      blocks[i].translated = (data.responseData?.translatedText || text).trim();
+      // MyMemory sometimes returns the same text on error
+      if (blocks[i].translated.toUpperCase() === text.toUpperCase()) {
+        blocks[i].translated = text;
+      }
+    } catch {
+      blocks[i].translated = text;
+    }
+
+    // Small delay to respect API rate limits
+    if (i < blocks.length - 1) await sleep(80);
+  }
+
+  setProgress(100, 'Ready to review');
+}
+
+// ─────────────────────────────────────────────
+//  REVIEW
+// ─────────────────────────────────────────────
+function showReview() {
+  setStep('review');
+  setPanel('review');
+  drawPreviewCanvas();
+  populateReviewList();
+  blockCount.textContent = `${blocks.length} block${blocks.length !== 1 ? 's' : ''}`;
+}
+
+function drawPreviewCanvas(hIdx = -1) {
+  const pane   = previewCanvas.parentElement;
+  const maxW   = pane.clientWidth  - 40;
+  const maxH   = pane.clientHeight - 40;
+  const scale  = Math.min(1, maxW / currentImage.naturalWidth, maxH / currentImage.naturalHeight);
+  displayScale = scale;
+
+  previewCanvas.width  = Math.round(currentImage.naturalWidth  * scale);
+  previewCanvas.height = Math.round(currentImage.naturalHeight * scale);
+
+  const ctx = previewCanvas.getContext('2d');
+  ctx.drawImage(currentImage, 0, 0, previewCanvas.width, previewCanvas.height);
+
+  blocks.forEach((block, i) => {
+    if (block.skip) return;
+    const { x0, y0, x1, y1 } = block.bbox;
+    const x = x0 * scale, y = y0 * scale;
+    const w = (x1 - x0) * scale, h = (y1 - y0) * scale;
+    const isHi = i === hIdx;
+
+    ctx.fillStyle = isHi ? 'rgba(124,106,247,0.45)' : 'rgba(124,106,247,0.2)';
+    ctx.fillRect(x, y, w, h);
+
+    ctx.strokeStyle = isHi ? '#9585fa' : 'rgba(124,106,247,0.7)';
+    ctx.lineWidth   = isHi ? 2 : 1.5;
+    ctx.strokeRect(x, y, w, h);
+
+    // Number badge
+    const bx = x + 3, by = y + 3;
+    ctx.fillStyle = isHi ? '#7c6af7' : 'rgba(124,106,247,0.9)';
+    const num = String(i + 1);
+    const tw  = ctx.measureText(num).width + 6;
+    ctx.font  = 'bold 10px sans-serif';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, Math.max(tw, 16), 14, 3);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText(num, bx + 3, by + 11);
+  });
+}
+
+function populateReviewList() {
+  blocksList.innerHTML = '';
+  blocks.forEach((block, i) => {
+    const item = document.createElement('div');
+    item.className = 'block-item' + (block.skip ? ' skipped' : '');
+    item.dataset.idx = i;
+
+    item.innerHTML = `
+      <div class="bi-header">
+        <span class="bi-num">${i + 1}</span>
+        <span class="bi-conf">Confidence: ${block.conf}%</span>
+        <label class="skip-toggle">
+          <input type="checkbox" class="skip-cb" ${block.skip ? 'checked' : ''}> Skip
+        </label>
+      </div>
+      <div class="bi-orig">${escHtml(block.text)}</div>
+      <textarea class="bi-trans" rows="2">${escHtml(block.translated)}</textarea>
+    `;
+
+    const skipCb   = item.querySelector('.skip-cb');
+    const textarea = item.querySelector('.bi-trans');
+
+    skipCb.addEventListener('change', () => {
+      blocks[i].skip = skipCb.checked;
+      item.classList.toggle('skipped', skipCb.checked);
+      drawPreviewCanvas(highlightIdx);
+    });
+
+    textarea.addEventListener('input', () => {
+      blocks[i].translated = textarea.value;
+    });
+
+    item.addEventListener('mouseenter', () => {
+      highlightIdx = i;
+      drawPreviewCanvas(i);
+      highlightItem(i);
+    });
+    item.addEventListener('mouseleave', () => {
+      highlightIdx = -1;
+      drawPreviewCanvas(-1);
+      highlightItem(-1);
+    });
+
+    blocksList.appendChild(item);
+  });
+}
+
+function highlightItem(idx) {
+  document.querySelectorAll('.block-item').forEach((el, i) => {
+    el.classList.toggle('highlighted', i === idx);
+  });
+}
+
+// Click on canvas to highlight nearest block
+previewCanvas.addEventListener('click', e => {
+  const rect  = previewCanvas.getBoundingClientRect();
+  const mx    = (e.clientX - rect.left) / displayScale;
+  const my    = (e.clientY - rect.top)  / displayScale;
+  let best = -1, bestDist = Infinity;
+
+  blocks.forEach((b, i) => {
+    const { x0, y0, x1, y1 } = b.bbox;
+    if (mx >= x0 && mx <= x1 && my >= y0 && my <= y1) {
+      const dist = 0;
+      if (dist < bestDist) { bestDist = dist; best = i; }
+    }
+  });
+
+  if (best !== -1) {
+    highlightIdx = best;
+    drawPreviewCanvas(best);
+    highlightItem(best);
+    const el = blocksList.children[best];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+});
+
+// ─────────────────────────────────────────────
+//  APPLY
+// ─────────────────────────────────────────────
+applyBtn.addEventListener('click', () => {
+  applyBtn.disabled = true;
+  applyBtn.textContent = 'Rendering…';
+  requestAnimationFrame(() => {
+    try {
+      renderResult();
+    } finally {
+      applyBtn.disabled = false;
+      applyBtn.textContent = 'Apply & Render';
+    }
+  });
+});
+
+function renderResult() {
+  const img = currentImage;
+  resultCanvas.width  = img.naturalWidth;
+  resultCanvas.height = img.naturalHeight;
+  const ctx = resultCanvas.getContext('2d');
+
+  // Draw original image
+  ctx.drawImage(img, 0, 0);
+
+  blocks.forEach(block => {
+    if (block.skip || !block.translated.trim()) return;
+    const { x0, y0, x1, y1 } = block.bbox;
+    const w = x1 - x0, h = y1 - y0;
+    if (w <= 0 || h <= 0) return;
+
+    // Sample background
+    const bg = sampleBgColor(ctx, x0, y0, w, h);
+
+    // Paint over original text
+    ctx.fillStyle = bg;
+    ctx.fillRect(x0, y0, w, h);
+
+    // Draw translated text
+    const fg       = contrastColor(bg);
+    const fontSize = fitFontSize(ctx, block.translated, w, h);
+    ctx.fillStyle  = fg;
+    ctx.font       = `${fontSize}px sans-serif`;
+    drawWrapped(ctx, block.translated, x0, y0, w, h, fontSize);
+  });
+
+  setPanel('result');
+  setStep('apply');
+  exportBtn.style.display = '';
+  showToast('Translation applied! Ready to export.');
+}
+
+// ─────────────────────────────────────────────
+//  BACKGROUND SAMPLING
+// ─────────────────────────────────────────────
+function sampleBgColor(ctx, x, y, w, h) {
+  // Sample inner border ring (4px) — tends to be background, not text
+  const bw = Math.max(1, Math.min(4, Math.floor(w / 6)));
+  const bh = Math.max(1, Math.min(4, Math.floor(h / 6)));
+  let r = 0, g = 0, b = 0, n = 0;
+
+  const addRect = (rx, ry, rw, rh) => {
+    rw = Math.max(1, rw); rh = Math.max(1, rh);
+    try {
+      const d = ctx.getImageData(Math.round(rx), Math.round(ry), Math.round(rw), Math.round(rh)).data;
+      for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i+1]; b += d[i+2]; n++; }
+    } catch {}
+  };
+
+  addRect(x,         y,          w,  bh);          // top
+  addRect(x,         y + h - bh, w,  bh);          // bottom
+  addRect(x,         y + bh,     bw, h - 2*bh);    // left
+  addRect(x + w - bw, y + bh,    bw, h - 2*bh);    // right
+
+  if (n === 0) {
+    // fallback: sample whole bbox
+    addRect(x, y, w, h);
+  }
+  if (n === 0) return 'rgb(255,255,255)';
+  return `rgb(${Math.round(r/n)},${Math.round(g/n)},${Math.round(b/n)})`;
+}
+
+function contrastColor(rgb) {
+  const m = rgb.match(/\d+/g);
+  if (!m) return '#000';
+  const [r, g, b] = m.map(Number);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.55 ? '#111111' : '#f0f0f0';
+}
+
+// ─────────────────────────────────────────────
+//  FONT FITTING + WRAPPED TEXT
+// ─────────────────────────────────────────────
+function fitFontSize(ctx, text, bboxW, bboxH) {
+  let fs = Math.min(Math.round(bboxH * 0.8), 96);
+  if (fs < 8) return 8;
+
+  ctx.font = `${fs}px sans-serif`;
+  // Binary-search reduction until text wraps without exceeding available height
+  for (let iter = 0; iter < 40 && fs > 8; iter++) {
+    const lines = measureWrapped(ctx, text, bboxW, fs);
+    const totalH = lines * (fs * 1.2);
+    if (totalH <= bboxH) break;
+    fs = Math.max(8, fs - 2);
+    ctx.font = `${fs}px sans-serif`;
+  }
+  return fs;
+}
+
+function measureWrapped(ctx, text, maxW, fontSize) {
+  ctx.font = `${fontSize}px sans-serif`;
+  const words = text.split(' ');
+  let lines = 1, cur = '';
+  for (const word of words) {
+    const test = cur + (cur ? ' ' : '') + word;
+    if (ctx.measureText(test).width > maxW && cur) { lines++; cur = word; }
+    else cur = test;
+  }
+  return lines;
+}
+
+function drawWrapped(ctx, text, x, y, w, h, fontSize) {
+  const lh    = fontSize * 1.25;
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+
+  for (const word of words) {
+    const test = cur + (cur ? ' ' : '') + word;
+    if (ctx.measureText(test).width > w && cur) { lines.push(cur); cur = word; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+
+  const totalH = lines.length * lh;
+  const startY = y + Math.max(fontSize, (h - totalH) / 2) + fontSize * 0.1;
+
+  lines.forEach((line, i) => {
+    ctx.fillText(line.trim(), x + 3, startY + i * lh, w - 6);
+  });
+}
+
+// ─────────────────────────────────────────────
+//  EXPORT
+// ─────────────────────────────────────────────
+function doExport() {
+  resultCanvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href    = url;
+    a.download = 'translated.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    showToast('Saved as translated.png');
+  }, 'image/png');
+}
+exportBtn.addEventListener('click', doExport);
+exportBtn2.addEventListener('click', doExport);
+
+// ─────────────────────────────────────────────
+//  NAVIGATION
+// ─────────────────────────────────────────────
+backBtn.addEventListener('click', () => {
+  setPanel('review');
+  setStep('review');
+  exportBtn.style.display = 'none';
+});
+
+newBtn.addEventListener('click', resetToUpload);
+
+function resetToUpload() {
+  blocks       = [];
+  currentImage = null;
+  blocksList.innerHTML = '';
+  setPanel('upload');
+  setStep('upload');
+  newBtn.style.display    = 'none';
+  exportBtn.style.display = 'none';
+  fileInput.value = '';
+}
+
+// ─────────────────────────────────────────────
+//  UTILITIES
+// ─────────────────────────────────────────────
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Redraw preview on resize
+window.addEventListener('resize', () => {
+  if (document.getElementById('p-review').classList.contains('active')) {
+    drawPreviewCanvas(highlightIdx);
+  }
+});
+</script>
+</body>
+</html>
