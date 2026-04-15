@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Image Text Translator</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1c1c26;
+      --surface3: #252532;
+      --border: #2a2a38;
+      --accent: #7c6af7;
+      --accent-h: #9d8fff;
+      --accent-dim: rgba(124, 106, 247, .15);
+      --txt: #eaeaf5;
+      --txt2: #7777a0;
+      --green: #2ecc71;
+      --red: #e74c3c;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--txt);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden
+    }
+
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      z-index: 200
+    }
+
+    .topbar h1 {
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .spacer {
+      flex: 1
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .15s;
+      white-space: nowrap
+    }
+
+    .btn:active {
+      transform: scale(.97)
+    }
+
+    .btn:disabled {
+      opacity: .4;
+      pointer-events: none
+    }
+
+    .btn-p {
+      background: var(--accent);
+      color: #fff
+    }
+
+    .btn-p:hover {
+      background: var(--accent-h)
+    }
+
+    .btn-g {
+      background: var(--surface2);
+      color: var(--txt);
+      border: 1px solid var(--border)
+    }
+
+    .btn-g:hover {
+      background: var(--surface3)
+    }
+
+    .app {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0
+    }
+
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column
+    }
+
+    .sb-s {
+      padding: 14px;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .sb-s h2 {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--txt2);
+      margin-bottom: 8px
+    }
+
+    select,
+    input[type=text],
+    input[type=password] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--txt);
+      font-size: 12px;
+      padding: 8px 10px;
+      outline: none
+    }
+
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237777a0' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px
+    }
+
+    input:focus {
+      border-color: var(--accent)
+    }
+
+    .key-w {
+      position: relative
+    }
+
+    .key-w input {
+      padding-right: 30px
+    }
+
+    .key-w .eye {
+      position: absolute;
+      right: 7px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--txt2);
+      cursor: pointer;
+      padding: 2px
+    }
+
+    .hint {
+      font-size: 10px;
+      color: var(--txt2);
+      margin-top: 5px;
+      line-height: 1.4
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 3px
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--txt2)
+    }
+
+    .step .d {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0
+    }
+
+    .step.on {
+      color: var(--txt);
+      background: var(--surface2)
+    }
+
+    .step.on .d {
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent)
+    }
+
+    .step.ok .d {
+      background: var(--green)
+    }
+
+    .main {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column
+    }
+
+    .view {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden
+    }
+
+    .view.active {
+      display: flex
+    }
+
+    /* UPLOAD */
+    .v-upload {
+      align-items: center;
+      justify-content: center;
+      padding: 40px
+    }
+
+    .dropzone {
+      width: 100%;
+      max-width: 500px;
+      border: 2px dashed var(--border);
+      border-radius: 20px;
+      padding: 56px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: .2s;
+      color: var(--txt2)
+    }
+
+    .dropzone:hover,
+    .dropzone.over {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      color: var(--txt)
+    }
+
+    .dropzone p {
+      font-size: 17px;
+      font-weight: 700;
+      margin: 14px 0 4px
+    }
+
+    .dropzone span {
+      font-size: 12px;
+      opacity: .5
+    }
+
+    .fmts {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 14px
+    }
+
+    .fmt {
+      padding: 3px 9px;
+      border-radius: 5px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--txt2)
+    }
+
+    /* LOADING */
+    .v-loading {
+      align-items: center;
+      justify-content: center
+    }
+
+    .load-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 40px 50px;
+      text-align: center;
+      min-width: 320px
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .spin {
+      width: 44px;
+      height: 44px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto 20px
+    }
+
+    .load-msg {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 16px
+    }
+
+    .pbar {
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 6px
+    }
+
+    .pbar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      width: 0%;
+      transition: width .4s
+    }
+
+    .pbar-pct {
+      font-size: 11px;
+      color: var(--txt2)
+    }
+
+    /* EDITOR */
+    .v-editor {
+      overflow: hidden;
+      position: relative
+    }
+
+    .ed-toolbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      z-index: 60;
+      height: 46px
+    }
+
+    .tb-g {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 0 5px
+    }
+
+    .tb-g+.tb-g {
+      border-left: 1px solid var(--border);
+      margin-left: 3px;
+      padding-left: 8px
+    }
+
+    .tb-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--txt2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      transition: .1s
+    }
+
+    .tb-btn:hover {
+      background: var(--surface2);
+      color: var(--txt)
+    }
+
+    .tb-btn.on {
+      background: var(--accent-dim);
+      color: var(--accent)
+    }
+
+    .tb-sz {
+      font-size: 12px;
+      color: var(--txt);
+      font-weight: 700;
+      min-width: 28px;
+      text-align: center
+    }
+
+    .tb-color {
+      width: 26px;
+      height: 26px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 0;
+      background: transparent;
+      overflow: hidden
+    }
+
+    .tb-color::-webkit-color-swatch-wrapper {
+      padding: 0
+    }
+
+    .tb-color::-webkit-color-swatch {
+      border: none
+    }
+
+    .tb-lbl {
+      font-size: 10px;
+      color: var(--txt2);
+      font-weight: 600;
+      padding: 0 3px
+    }
+
+    .tb-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .tb-badge {
+      font-size: 10px;
+      color: var(--txt2);
+      background: var(--surface2);
+      padding: 3px 10px;
+      border-radius: 10px;
+      font-weight: 600
+    }
+
+    .tb-sel {
+      display: none
+    }
+
+    .tb-sel.show {
+      display: contents
+    }
+
+    .ed-scroll {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 70px 24px 24px
+    }
+
+    .canvas-wrap {
+      position: relative;
+      display: inline-block;
+      border-radius: 6px;
+      box-shadow: 0 8px 48px rgba(0, 0, 0, .6);
+      flex-shrink: 0
+    }
+
+    .canvas-wrap img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      border-radius: 6px
+    }
+
+    .tblock {
+      position: absolute;
+      cursor: move;
+      outline: 2px solid transparent;
+      transition: outline-color .1s;
+      min-width: 10px;
+      min-height: 8px
+    }
+
+    .tblock:hover {
+      outline-color: rgba(124, 106, 247, .4)
+    }
+
+    .tblock.sel {
+      outline: 2px solid var(--accent);
+      z-index: 10
+    }
+
+    .tcontent {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      padding: 2px 4px;
+      overflow: hidden;
+      word-break: break-word;
+      white-space: pre-wrap;
+      line-height: 1.25;
+      outline: none;
+      user-select: none
+    }
+
+    .tcontent.editing {
+      cursor: text;
+      user-select: text
+    }
+
+    .rh {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #fff;
+      border: 2px solid var(--accent);
+      border-radius: 2px;
+      z-index: 12;
+      display: none
+    }
+
+    .tblock.sel .rh {
+      display: block
+    }
+
+    .rh-nw {
+      top: -5px;
+      left: -5px;
+      cursor: nw-resize
+    }
+
+    .rh-ne {
+      top: -5px;
+      right: -5px;
+      cursor: ne-resize
+    }
+
+    .rh-sw {
+      bottom: -5px;
+      left: -5px;
+      cursor: sw-resize
+    }
+
+    .rh-se {
+      bottom: -5px;
+      right: -5px;
+      cursor: se-resize
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(14px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 9px 18px;
+      font-size: 13px;
+      opacity: 0;
+      transition: .2s;
+      pointer-events: none;
+      z-index: 9999
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0)
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px
+    }
+
+    @media(max-width:700px) {
+      .sidebar {
+        display: none
+      }
+
+      .ed-scroll {
+        padding: 54px 10px 10px
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="topbar">
+    <h1>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="18" height="18" rx="2" stroke="var(--accent)" stroke-width="2" />
+        <path d="M7 8h5M7 12h10M7 16h7" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" />
+      </svg>
+      Image Translator
+    </h1>
+    <div class="spacer"></div>
+    <button class="btn btn-g" id="btn-new" style="display:none">↩ New Image</button>
+    <button class="btn btn-p" id="btn-export" style="display:none">⬇ Export PNG</button>
+  </div>
+
+  <div class="app">
+    <div class="sidebar">
+      <div class="sb-s">
+        <h2>Gemini API Key</h2>
+        <div class="key-w">
+          <input type="password" id="api-key" placeholder="AIza…" autocomplete="off">
+          <button class="eye" id="eye-btn">👁</button>
+        </div>
+        <p class="hint">Free at aistudio.google.com — no billing needed.</p>
+      </div>
+      <div class="sb-s">
+        <h2>Source Language</h2>
+        <select id="sel-src"></select>
+      </div>
+      <div class="sb-s">
+        <h2>Target Language</h2>
+        <select id="sel-tgt"></select>
+      </div>
+      <div class="sb-s">
+        <h2>Progress</h2>
+        <div class="steps">
+          <div class="step on" data-s="upload">
+            <div class="d"></div>Upload image
+          </div>
+          <div class="step" data-s="detect">
+            <div class="d"></div>Detect text
+          </div>
+          <div class="step" data-s="translate">
+            <div class="d"></div>Translate
+          </div>
+          <div class="step" data-s="edit">
+            <div class="d"></div>Edit & adjust
+          </div>
+          <div class="step" data-s="export">
+            <div class="d"></div>Export
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="view active" id="v-upload">
+        <div class="dropzone" id="dropzone">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style="margin:0 auto;opacity:.35">
+            <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5" />
+            <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1.5" />
+            <path d="M3 16l5-5 4 4 2-2 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+          <p>Drop image here</p>
+          <span>or click to browse</span>
+          <div class="fmts"><span class="fmt">JPG</span><span class="fmt">PNG</span><span class="fmt">WEBP</span></div>
+        </div>
+      </div>
+
+      <div class="view" id="v-loading">
+        <div class="load-card">
+          <div class="spin"></div>
+          <div class="load-msg" id="load-msg">Detecting text…</div>
+          <div class="pbar">
+            <div class="pbar-fill" id="pbar-fill"></div>
+          </div>
+          <div class="pbar-pct" id="pbar-pct">0%</div>
+        </div>
+      </div>
+
+      <div class="view" id="v-editor">
+        <div class="ed-toolbar">
+          <div class="tb-g">
+            <button class="tb-btn" id="tb-add" title="Add text">＋</button>
+          </div>
+          <div class="tb-sel" id="tb-sel">
+            <div class="tb-g">
+              <button class="tb-btn" id="tb-szd">−</button>
+              <span class="tb-sz" id="tb-szv">16</span>
+              <button class="tb-btn" id="tb-szu">＋</button>
+            </div>
+            <div class="tb-g">
+              <button class="tb-btn" id="tb-b" style="font-weight:900">B</button>
+              <button class="tb-btn" id="tb-i" style="font-style:italic">I</button>
+            </div>
+            <div class="tb-g">
+              <button class="tb-btn" id="tb-al">⬅</button>
+              <button class="tb-btn" id="tb-ac">☰</button>
+              <button class="tb-btn" id="tb-ar">➡</button>
+            </div>
+            <div class="tb-g">
+              <span class="tb-lbl">Text</span><input type="color" class="tb-color" id="tb-tc">
+              <span class="tb-lbl">BG</span><input type="color" class="tb-color" id="tb-bg">
+            </div>
+            <div class="tb-g">
+              <button class="tb-btn" id="tb-del" style="color:var(--red)">🗑</button>
+            </div>
+          </div>
+          <div class="tb-right">
+            <span class="tb-badge" id="tb-count">0 blocks</span>
+          </div>
+        </div>
+        <div class="ed-scroll" id="ed-scroll">
+          <div class="canvas-wrap" id="canvas-wrap">
+            <img id="ed-img" src="" alt="">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="file-in" accept="image/jpeg,image/png,image/webp" style="display:none">
+  <div id="toast"></div>
+
+  <script>
+    const LANGS = [
+      { c: 'en', l: 'English' }, { c: 'pt', l: 'Portuguese' }, { c: 'es', l: 'Spanish' },
+      { c: 'fr', l: 'French' }, { c: 'de', l: 'German' }, { c: 'it', l: 'Italian' },
+      { c: 'el', l: 'Greek' }, { c: 'nl', l: 'Dutch' }, { c: 'pl', l: 'Polish' }, { c: 'fi', l: 'Finnish' },
+    ];
+
+    let srcLang = LANGS[0], tgtLang = LANGS[1];
+    let img = null, imgMime = 'image/jpeg';
+    let blocks = [], selBlock = null;
+    let wrapW = 0, wrapH = 0;
+    let drag = null, rsz = null;
+    const fontsLoaded = new Set();
+
+    const $ = id => document.getElementById(id);
+    const apiKeyEl = $('api-key');
+    const selSrc = $('sel-src'), selTgt = $('sel-tgt');
+    const dropzone = $('dropzone'), fileIn = $('file-in');
+    const loadMsg = $('load-msg'), pbarFill = $('pbar-fill'), pbarPct = $('pbar-pct');
+    const edScroll = $('ed-scroll'), wrap = $('canvas-wrap'), edImg = $('ed-img');
+    const tbSel = $('tb-sel'), tbSzv = $('tb-szv'), tbCount = $('tb-count');
+    const btnNew = $('btn-new'), btnExport = $('btn-export');
+    const toast = $('toast');
+
+    // init
+    apiKeyEl.value = sessionStorage.getItem('gk') || '';
+    apiKeyEl.oninput = () => sessionStorage.setItem('gk', apiKeyEl.value.trim());
+    $('eye-btn').onclick = () => { apiKeyEl.type = apiKeyEl.type === 'password' ? 'text' : 'password' };
+    const getKey = () => apiKeyEl.value.trim() || sessionStorage.getItem('gk') || '';
+
+    LANGS.forEach((l, i) => {
+      selSrc.appendChild(new Option(l.l, i));
+      selTgt.appendChild(new Option(l.l, i));
+    });
+    selSrc.value = 0; selTgt.value = 1;
+    selSrc.onchange = () => { srcLang = LANGS[+selSrc.value] };
+    selTgt.onchange = () => { tgtLang = LANGS[+selTgt.value] };
+
+    const STEPS = ['upload', 'detect', 'translate', 'edit', 'export'];
+    function showView(id) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); $(id).classList.add('active') }
+    function setStep(s) {
+      const idx = STEPS.indexOf(s);
+      document.querySelectorAll('.step').forEach((el, i) => {
+        el.classList.remove('on', 'ok');
+        if (i < idx) el.classList.add('ok');
+        else if (i === idx) el.classList.add('on');
+      });
+    }
+    function progress(pct, msg) {
+      pbarFill.style.width = pct + '%';
+      pbarPct.textContent = Math.round(pct) + '%';
+      if (msg) loadMsg.textContent = msg;
+    }
+    let toastT;
+    function showToast(m) { toast.textContent = m; toast.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => toast.classList.remove('show'), 3500) }
+
+    // upload
+    dropzone.onclick = () => fileIn.click();
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('over') });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('over'));
+    dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('over'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]) });
+    fileIn.onchange = () => { if (fileIn.files[0]) handleFile(fileIn.files[0]) };
+
+    function handleFile(f) {
+      if (!/image\/(jpeg|png|webp)/.test(f.type)) { showToast('Use JPG, PNG or WEBP'); return }
+      if (!getKey()) { showToast('Enter your Gemini API key first'); apiKeyEl.focus(); return }
+      imgMime = f.type;
+      const r = new FileReader();
+      r.onload = e => {
+        const i = new Image();
+        i.onload = () => { img = i; runPipeline() };
+        i.src = e.target.result;
+      };
+      r.readAsDataURL(f);
+    }
+
+    async function runPipeline() {
+      btnNew.style.display = '';
+      btnExport.style.display = 'none';
+      showView('v-loading');
+      progress(0, 'Detecting text blocks…');
+      setStep('detect');
+      try {
+        await detectBlocks();
+        await translateBlocks();
+        openEditor();
+      } catch (err) {
+        console.error(err);
+        showToast('Error: ' + err.message);
+        resetAll();
+      }
+    }
+
+    // ── GEMINI DETECTION ──
+    async function detectBlocks() {
+      progress(10, 'Encoding image…');
+      const b64 = await toBase64(img, imgMime);
+      const mt = imgMime === 'image/png' ? 'image/png' : imgMime === 'image/webp' ? 'image/webp' : 'image/jpeg';
+
+      progress(25, 'Calling Gemini Vision…');
+
+      const prompt = `Look at this image and find every piece of text in it.
+
+For EACH separate text element (title, subtitle, paragraph, label, price, footer, etc.) create one JSON object.
+
+Rules:
+- One object per visual text group
+- Never combine different text sections into one object
+- A title and a subtitle are ALWAYS separate objects
+
+Return ONLY a valid JSON array. No explanation. No markdown. Start with [ end with ].
+
+Each object must have these exact keys:
+- id: number starting at 1
+- original_text: the exact text you see
+- x: left edge position as % of image width (0-100)
+- y: top edge position as % of image height (0-100)
+- width: text block width as % of image width
+- height: text block height as % of image height
+- font_size_ratio: font size divided by image height (e.g. 0.05 for medium, 0.10 for large title)
+- font_weight: "normal" or "bold"
+- font_style: "normal" or "italic"
+- font_family: closest Google Fonts name
+- text_color: hex color like "#ffffff"
+- background_color: hex color of area behind this text
+- text_align: "left" "center" or "right"
+- letter_spacing: "normal" "wide" or "wider"`;
+
+      const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${getKey()}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inline_data: { mime_type: mt, data: b64 } },
+                { text: prompt }
+              ]
+            }],
+            generationConfig: { temperature: 0, maxOutputTokens: 8192 }
+          })
+        }
+      );
+
+      progress(70, 'Parsing response…');
+      if (!resp.ok) {
+        const e = await resp.json().catch(() => ({}));
+        throw new Error('Gemini API: ' + (e?.error?.message || 'HTTP ' + resp.status));
+      }
+
+      const data = await resp.json();
+      const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      console.log('Gemini raw response:', raw);
+
+      // extract JSON array from response
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (!match) throw new Error('No JSON array found in response');
+
+      let parsed;
+      try { parsed = JSON.parse(match[0]) }
+      catch (e) { console.error('Parse error:', raw); throw new Error('Could not parse JSON: ' + e.message) }
+
+      if (!Array.isArray(parsed) || !parsed.length) throw new Error('No text blocks detected');
+
+      console.log('Detected', parsed.length, 'blocks:', parsed.map(b => b.original_text));
+
+      progress(85, 'Loading fonts…');
+      blocks = parsed.map((b, i) => ({
+        id: i,
+        orig: String(b.original_text || ''),
+        text: '',
+        x: clamp(Number(b.x) || 0, 0, 100),
+        y: clamp(Number(b.y) || 0, 0, 100),
+        w: clamp(Number(b.width) || 20, 1, 100),
+        h: clamp(Number(b.height) || 5, 1, 100),
+        fsRatio: Number(b.font_size_ratio) || 0.04,
+        fw: b.font_weight || 'normal',
+        fi: b.font_style || 'normal',
+        ff: b.font_family || 'sans-serif',
+        tc: b.text_color || '#000000',
+        bg: b.background_color || '#ffffff',
+        ta: b.text_align || 'center',
+        ls: b.letter_spacing || 'normal',
+        el: null, cel: null,
+      }));
+
+      await loadAllFonts(blocks);
+    }
+
+    // ── TRANSLATE (MyMemory free) ──
+    async function translateBlocks() {
+      setStep('translate');
+      for (let i = 0; i < blocks.length; i++) {
+        progress(85 + (i / blocks.length) * 13, 'Translating ' + (i + 1) + '/' + blocks.length + '…');
+        const t = blocks[i].orig.trim();
+        if (!t) { blocks[i].text = ''; continue }
+        try {
+          const u = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(t) + '&langpair=' + srcLang.c + '|' + tgtLang.c;
+          const r = await fetch(u);
+          const d = await r.json();
+          blocks[i].text = (d.responseData?.translatedText || t).trim();
+        } catch { blocks[i].text = t }
+        if (i < blocks.length - 1) await sleep(80);
+      }
+      progress(100, 'Done!');
+    }
+
+    // ── FONTS ──
+    async function loadFont(f) {
+      if (!f || ['sans-serif', 'serif', 'monospace'].includes(f) || fontsLoaded.has(f)) return;
+      fontsLoaded.add(f);
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f) + ':ital,wght@0,400;0,700;1,400;1,700&display=swap';
+      document.head.appendChild(link);
+      try { await Promise.race([document.fonts.ready, sleep(3000)]) } catch { }
+    }
+    async function loadAllFonts(bs) { await Promise.all([...new Set(bs.map(b => b.ff))].map(loadFont)) }
+
+    // ── EDITOR ──
+    function openEditor() {
+      setStep('edit');
+      showView('v-editor');
+      btnExport.style.display = '';
+      edImg.src = img.src;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        sizeWrap();
+        buildOverlays();
+        tbCount.textContent = blocks.length + ' block' + (blocks.length !== 1 ? 's' : '');
+        showToast(blocks.length + ' text blocks detected — click to edit');
+      }));
+    }
+
+    function sizeWrap() {
+      const sw = edScroll.clientWidth || 800, sh = edScroll.clientHeight || 600;
+      const maxW = Math.min(820, sw - 48), maxH = sh - 48;
+      const sc = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight);
+      wrapW = Math.max(100, Math.round(img.naturalWidth * sc));
+      wrapH = Math.max(100, Math.round(img.naturalHeight * sc));
+      wrap.style.width = wrapW + 'px';
+      wrap.style.height = wrapH + 'px';
+    }
+
+    function buildOverlays() {
+      wrap.querySelectorAll('.tblock').forEach(e => e.remove());
+      blocks.forEach(b => makeBlock(b));
+    }
+
+    function makeBlock(b) {
+      const el = document.createElement('div');
+      el.className = 'tblock';
+      applyPos(el, b);
+      el.style.backgroundColor = b.bg;
+
+      const cel = document.createElement('div');
+      cel.className = 'tcontent';
+      cel.textContent = b.text || b.orig;
+      cel.spellcheck = false;
+      applyFont(cel, b);
+      el.appendChild(cel);
+
+      ['nw', 'ne', 'sw', 'se'].forEach(d => {
+        const h = document.createElement('div');
+        h.className = 'rh rh-' + d;
+        h.dataset.d = d;
+        el.appendChild(h);
+      });
+
+      el.addEventListener('mousedown', e => onPointerDown(e, b));
+      el.addEventListener('touchstart', e => onTouchStart(e, b), { passive: false });
+      cel.addEventListener('dblclick', () => startEdit(b));
+      cel.addEventListener('input', () => { b.text = cel.textContent });
+
+      wrap.appendChild(el);
+      b.el = el; b.cel = cel;
+    }
+
+    function applyPos(el, b) {
+      el.style.left = b.x + '%'; el.style.top = b.y + '%';
+      el.style.width = b.w + '%'; el.style.height = b.h + '%';
+    }
+
+    function applyFont(cel, b) {
+      const fs = Math.max(8, b.fsRatio * wrapH);
+      cel.style.cssText += `;font-family:"${b.ff}",sans-serif;font-size:${fs}px;font-weight:${b.fw};font-style:${b.fi};color:${b.tc};text-align:${b.ta};justify-content:${b.ta === 'center' ? 'center' : b.ta === 'right' ? 'flex-end' : 'flex-start'};letter-spacing:${b.ls === 'wider' ? '.15em' : b.ls === 'wide' ? '.07em' : 'normal'}`;
+    }
+
+    function select(b) {
+      deselect();
+      selBlock = b;
+      b.el.classList.add('sel');
+      syncTb(b);
+      tbSel.classList.add('show');
+    }
+
+    function deselect() {
+      if (selBlock) { selBlock.el.classList.remove('sel'); stopEdit(selBlock) }
+      selBlock = null;
+      tbSel.classList.remove('show');
+    }
+
+    function startEdit(b) {
+      b.cel.contentEditable = 'true';
+      b.cel.classList.add('editing');
+      b.cel.focus();
+    }
+
+    function stopEdit(b) {
+      if (!b || !b.cel) return;
+      b.cel.contentEditable = 'false';
+      b.cel.classList.remove('editing');
+    }
+
+    function syncTb(b) {
+      tbSzv.textContent = Math.round(b.fsRatio * wrapH);
+      $('tb-tc').value = b.tc;
+      $('tb-bg').value = b.bg;
+      $('tb-b').classList.toggle('on', b.fw === 'bold' || b.fw === '900');
+      $('tb-i').classList.toggle('on', b.fi === 'italic');
+      $('tb-al').classList.toggle('on', b.ta === 'left');
+      $('tb-ac').classList.toggle('on', b.ta === 'center');
+      $('tb-ar').classList.toggle('on', b.ta === 'right');
+    }
+
+    edScroll.addEventListener('mousedown', e => {
+      if (e.target === edScroll || e.target === wrap || e.target === edImg) deselect();
+    });
+
+    // drag
+    function onPointerDown(e, b) {
+      e.stopPropagation();
+      const rh = e.target.closest('.rh');
+      if (rh) { e.preventDefault(); startRsz(e, b, rh.dataset.d); return }
+      select(b);
+      if (b.cel.contentEditable === 'true' && e.target.closest('.tcontent')) return;
+      e.preventDefault();
+      const r = wrap.getBoundingClientRect();
+      drag = { b, sx: e.clientX, sy: e.clientY, ox: b.x, oy: b.y, r };
+      document.addEventListener('mousemove', onDragMove);
+      document.addEventListener('mouseup', onDragEnd);
+    }
+    function onDragMove(e) {
+      if (!drag) return;
+      drag.b.x = clamp(drag.ox + (e.clientX - drag.sx) / drag.r.width * 100, 0, 100 - drag.b.w);
+      drag.b.y = clamp(drag.oy + (e.clientY - drag.sy) / drag.r.height * 100, 0, 100 - drag.b.h);
+      applyPos(drag.b.el, drag.b);
+    }
+    function onDragEnd() { drag = null; document.removeEventListener('mousemove', onDragMove); document.removeEventListener('mouseup', onDragEnd) }
+
+    // resize
+    function startRsz(e, b, dir) {
+      e.preventDefault();
+      const r = wrap.getBoundingClientRect();
+      rsz = { b, dir, sx: e.clientX, sy: e.clientY, ox: b.x, oy: b.y, ow: b.w, oh: b.h, r };
+      document.addEventListener('mousemove', onRszMove);
+      document.addEventListener('mouseup', onRszEnd);
+    }
+    function onRszMove(e) {
+      if (!rsz) return;
+      const s = rsz, dx = (e.clientX - s.sx) / s.r.width * 100, dy = (e.clientY - s.sy) / s.r.height * 100;
+      let nx = s.ox, ny = s.oy, nw = s.ow, nh = s.oh;
+      if (s.dir.includes('e')) nw = Math.max(2, s.ow + dx);
+      if (s.dir.includes('w')) { nw = Math.max(2, s.ow - dx); nx = s.ox + (s.ow - nw) }
+      if (s.dir.includes('s')) nh = Math.max(1, s.oh + dy);
+      if (s.dir.includes('n')) { nh = Math.max(1, s.oh - dy); ny = s.oy + (s.oh - nh) }
+      s.b.x = Math.max(0, nx); s.b.y = Math.max(0, ny);
+      s.b.w = Math.min(100 - s.b.x, nw); s.b.h = Math.min(100 - s.b.y, nh);
+      applyPos(s.b.el, s.b);
+    }
+    function onRszEnd() { rsz = null; document.removeEventListener('mousemove', onRszMove); document.removeEventListener('mouseup', onRszEnd) }
+
+    // touch
+    function onTouchStart(e, b) {
+      if (e.touches.length !== 1) return;
+      e.preventDefault(); e.stopPropagation();
+      const t = e.touches[0];
+      const rh = e.target.closest('.rh');
+      if (rh) { touchRsz(t, b, rh.dataset.d); return }
+      select(b);
+      const r = wrap.getBoundingClientRect();
+      const st = { sx: t.clientX, sy: t.clientY, ox: b.x, oy: b.y, r, moved: false };
+      function mv(ev) {
+        const p = ev.touches[0];
+        const dx = (p.clientX - st.sx) / st.r.width * 100, dy = (p.clientY - st.sy) / st.r.height * 100;
+        if (Math.abs(dx) > .5 || Math.abs(dy) > .5) st.moved = true;
+        b.x = clamp(st.ox + dx, 0, 100 - b.w); b.y = clamp(st.oy + dy, 0, 100 - b.h);
+        applyPos(b.el, b);
+      }
+      function up() { document.removeEventListener('touchmove', mv); document.removeEventListener('touchend', up); if (!st.moved) startEdit(b) }
+      document.addEventListener('touchmove', mv, { passive: false });
+      document.addEventListener('touchend', up);
+    }
+    function touchRsz(t, b, dir) {
+      const r = wrap.getBoundingClientRect();
+      const s = { sx: t.clientX, sy: t.clientY, ox: b.x, oy: b.y, ow: b.w, oh: b.h, r };
+      function mv(ev) {
+        const p = ev.touches[0];
+        const dx = (p.clientX - s.sx) / s.r.width * 100, dy = (p.clientY - s.sy) / s.r.height * 100;
+        let nx = s.ox, ny = s.oy, nw = s.ow, nh = s.oh;
+        if (dir.includes('e')) nw = Math.max(2, s.ow + dx);
+        if (dir.includes('w')) { nw = Math.max(2, s.ow - dx); nx = s.ox + (s.ow - nw) }
+        if (dir.includes('s')) nh = Math.max(1, s.oh + dy);
+        if (dir.includes('n')) { nh = Math.max(1, s.oh - dy); ny = s.oy + (s.oh - nh) }
+        b.x = Math.max(0, nx); b.y = Math.max(0, ny);
+        b.w = Math.min(100 - b.x, nw); b.h = Math.min(100 - b.y, nh);
+        applyPos(b.el, b);
+      }
+      function up() { document.removeEventListener('touchmove', mv); document.removeEventListener('touchend', up) }
+      document.addEventListener('touchmove', mv, { passive: false });
+      document.addEventListener('touchend', up);
+    }
+
+    // toolbar
+    $('tb-szu').onclick = () => { if (!selBlock) return; selBlock.fsRatio = Math.min(.3, selBlock.fsRatio + .005); applyFont(selBlock.cel, selBlock); syncTb(selBlock) };
+    $('tb-szd').onclick = () => { if (!selBlock) return; selBlock.fsRatio = Math.max(.005, selBlock.fsRatio - .005); applyFont(selBlock.cel, selBlock); syncTb(selBlock) };
+    $('tb-b').onclick = () => { if (!selBlock) return; selBlock.fw = selBlock.fw === 'bold' ? 'normal' : 'bold'; applyFont(selBlock.cel, selBlock); syncTb(selBlock) };
+    $('tb-i').onclick = () => { if (!selBlock) return; selBlock.fi = selBlock.fi === 'italic' ? 'normal' : 'italic'; applyFont(selBlock.cel, selBlock); syncTb(selBlock) };
+    ['left', 'center', 'right'].forEach((a, i) => {
+      $(['tb-al', 'tb-ac', 'tb-ar'][i]).onclick = () => { if (!selBlock) return; selBlock.ta = a; applyFont(selBlock.cel, selBlock); syncTb(selBlock) };
+    });
+    $('tb-tc').oninput = e => { if (!selBlock) return; selBlock.tc = e.target.value; selBlock.cel.style.color = e.target.value };
+    $('tb-bg').oninput = e => { if (!selBlock) return; selBlock.bg = e.target.value; selBlock.el.style.backgroundColor = e.target.value };
+    $('tb-del').onclick = () => {
+      if (!selBlock) return;
+      selBlock.el.remove();
+      blocks = blocks.filter(b => b !== selBlock);
+      selBlock = null; tbSel.classList.remove('show');
+      tbCount.textContent = blocks.length + ' block' + (blocks.length !== 1 ? 's' : '');
+    };
+    $('tb-add').onclick = () => {
+      const nb = { id: Date.now(), orig: '', text: 'New text', x: 10, y: 10, w: 25, h: 8, fsRatio: .04, fw: 'normal', fi: 'normal', ff: 'sans-serif', tc: '#000000', bg: '#ffffff', ta: 'center', ls: 'normal', el: null, cel: null };
+      blocks.push(nb); makeBlock(nb); select(nb);
+      tbCount.textContent = blocks.length + ' block' + (blocks.length !== 1 ? 's' : '');
+      setTimeout(() => { startEdit(nb); const s = window.getSelection(), r = document.createRange(); r.selectNodeContents(nb.cel); s.removeAllRanges(); s.addRange(r) }, 50);
+    };
+
+    // export
+    btnExport.onclick = async () => {
+      btnExport.disabled = true; btnExport.textContent = 'Exporting…';
+      try {
+        const S = 2, iw = img.naturalWidth * S, ih = img.naturalHeight * S;
+        const c = document.createElement('canvas'); c.width = iw; c.height = ih;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, iw, ih);
+        for (const b of blocks) {
+          const t = b.cel ? b.cel.textContent : (b.text || b.orig);
+          if (!t.trim()) continue;
+          const bx = (b.x / 100) * iw, by = (b.y / 100) * ih, bw = (b.w / 100) * iw, bh = (b.h / 100) * ih;
+          ctx.fillStyle = b.bg; ctx.fillRect(bx, by, bw, bh);
+          const fs = Math.max(6, b.fsRatio * ih);
+          ctx.font = `${b.fi} ${b.fw} ${fs}px "${b.ff}",sans-serif`;
+          ctx.fillStyle = b.tc;
+          drawText(ctx, t, bx, by, bw, bh, fs, b.ta);
+        }
+        c.toBlob(blob => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob); a.download = 'translated.png'; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+          showToast('Saved as translated.png'); setStep('export');
+        }, 'image/png');
+      } catch (err) { showToast('Export error: ' + err.message) }
+      finally { btnExport.disabled = false; btnExport.textContent = '⬇ Export PNG' }
+    };
+
+    function drawText(ctx, text, bx, by, bw, bh, fs, align) {
+      const lh = fs * 1.3;
+      const words = text.split(' '); const lines = []; let cur = '';
+      for (const w of words) {
+        const test = cur ? cur + ' ' + w : w;
+        if (ctx.measureText(test).width > bw - 8 && cur) { lines.push(cur); cur = w } else cur = test;
+      }
+      if (cur) lines.push(cur);
+      const totalH = lines.length * lh;
+      const startY = by + Math.max(fs, (bh - totalH) / 2) + fs * .05;
+      ctx.textBaseline = 'alphabetic';
+      lines.forEach((line, i) => {
+        const lw = ctx.measureText(line).width;
+        const lx = align === 'center' ? bx + (bw - lw) / 2 : align === 'right' ? bx + bw - lw - 4 : bx + 4;
+        ctx.fillText(line, lx, startY + i * lh, bw - 8);
+      });
+    }
+
+    btnNew.onclick = resetAll;
+    function resetAll() {
+      blocks = []; img = null; selBlock = null;
+      wrap.querySelectorAll('.tblock').forEach(e => e.remove());
+      showView('v-upload'); setStep('upload');
+      btnNew.style.display = 'none'; btnExport.style.display = 'none';
+      tbSel.classList.remove('show'); fileIn.value = '';
+    }
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, isNaN(v) ? lo : v)) }
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+
+    async function toBase64(im, mime) {
+      const MAX = 2000;
+      const sc = Math.min(1, MAX / im.naturalWidth, MAX / im.naturalHeight);
+      const c = document.createElement('canvas');
+      c.width = Math.round(im.naturalWidth * sc); c.height = Math.round(im.naturalHeight * sc);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      return c.toDataURL(mime === 'image/png' ? 'image/png' : mime === 'image/webp' ? 'image/webp' : 'image/jpeg', .95).split(',')[1];
+    }
+
+    document.addEventListener('keydown', e => {
+      if (!selBlock) return;
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selBlock.cel.contentEditable !== 'true') { e.preventDefault(); $('tb-del').click() }
+      if (e.key === 'Escape') deselect();
+    });
+
+    window.addEventListener('resize', () => {
+      if (!$('v-editor').classList.contains('active') || !img) return;
+      sizeWrap(); blocks.forEach(b => { if (b.cel) b.cel.style.fontSize = (b.fsRatio * wrapH) + 'px' });
+    });
+  </script>
+</body>
+
+</html>

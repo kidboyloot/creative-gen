@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Collage Maker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #111114;
+    --surface: #1c1c21;
+    --surface2: #26262e;
+    --border: #35353f;
+    --accent: #7c6af7;
+    --accent-hover: #9585fa;
+    --text: #e8e8f0;
+    --text-muted: #7a7a8c;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    flex: 1;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, opacity 0.15s;
+    user-select: none;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover:not(:disabled) { background: #2f2f3a; }
+
+  .workspace {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-section h2 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .layout-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .layout-btn {
+    aspect-ratio: 1;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+  }
+  .layout-btn:hover { border-color: var(--accent); background: #22222a; }
+  .layout-btn.active { border-color: var(--accent); background: #1e1b3a; }
+  .layout-preview {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    gap: 2px;
+  }
+  .layout-preview-cell {
+    background: var(--text-muted);
+    border-radius: 2px;
+    opacity: 0.5;
+  }
+  .layout-btn.active .layout-preview-cell { opacity: 1; background: var(--accent); }
+  .layout-label {
+    position: absolute;
+    bottom: 3px;
+    right: 5px;
+    font-size: 9px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .layout-btn.active .layout-label { color: var(--accent); }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .control-row:last-child { margin-bottom: 0; }
+  .control-label { font-size: 13px; color: var(--text-muted); flex: 1; }
+  .control-right { display: flex; align-items: center; gap: 8px; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 90px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  .range-val { font-size: 12px; color: var(--text-muted); min-width: 28px; text-align: right; }
+
+  input[type="color"] {
+    -webkit-appearance: none;
+    width: 30px; height: 28px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+    padding: 2px;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
+
+  /* ── CANVAS AREA ── */
+  .canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: auto;
+    padding: 32px;
+    gap: 24px;
+    background:
+      radial-gradient(circle at 20% 30%, #1a1730 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, #161625 0%, transparent 50%),
+      var(--bg);
+  }
+
+  /* ── MODE TOGGLE ── */
+  .mode-toggle {
+    display: flex;
+    gap: 3px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    flex-shrink: 0;
+  }
+  .mode-btn {
+    padding: 6px 20px;
+    border-radius: 7px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mode-btn.active { background: var(--surface2); color: var(--text); }
+
+  /* ── SINGLE PANEL ── */
+  #panel-single {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+
+  #collage-container {
+    position: relative;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  #collage-grid {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    transition: gap 0.2s, padding 0.2s;
+  }
+
+  .collage-cell {
+    position: relative;
+    overflow: hidden;
+    cursor: crosshair;
+    background: #222228;
+  }
+  .collage-cell.drag-over {
+    outline: 2px dashed var(--accent);
+    outline-offset: -2px;
+  }
+  .cell-img-wrapper {
+    position: absolute;
+    inset: 0;
+    transform-origin: center center;
+    will-change: transform;
+    pointer-events: none;
+  }
+  .cell-img-wrapper img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .cell-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  .cell-empty svg { opacity: 0.4; }
+  .cell-empty span { font-size: 12px; opacity: 0.6; }
+  .collage-cell:hover .cell-empty { opacity: 0.7; }
+  .collage-cell.has-image .cell-empty { display: none; }
+  .cell-overlay {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: rgba(0,0,0,0.45);
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 8px;
+    pointer-events: none;
+  }
+  .collage-cell:hover .cell-overlay { opacity: 1; pointer-events: auto; }
+  .cell-replace-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .cell-replace-btn:hover { background: rgba(255,255,255,0.25); }
+
+  /* ── BULK PANEL ── */
+  #panel-bulk {
+    width: 100%;
+    max-width: 860px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .bulk-drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 56px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    color: var(--text-muted);
+  }
+  .bulk-drop-zone:hover, .bulk-drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(124,106,247,0.05);
+    color: var(--text);
+  }
+  .bulk-drop-zone svg { opacity: 0.4; margin-bottom: 12px; }
+  .bulk-drop-zone p { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .bulk-drop-zone span { font-size: 12px; opacity: 0.6; }
+
+  .bulk-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .bulk-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .bulk-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    flex: 1;
+  }
+  .bulk-section-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .bulk-section-body { padding: 14px 16px; }
+
+  .bulk-images-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .bulk-thumb {
+    width: 68px;
+    height: 68px;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+    cursor: grab;
+  }
+  .bulk-thumb img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    display: block;
+  }
+  .bulk-thumb-num {
+    position: absolute;
+    top: 3px; left: 3px;
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 1px 4px;
+    pointer-events: none;
+  }
+  .bulk-thumb-remove {
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.7);
+    border: none;
+    color: #fff;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .bulk-thumb:hover .bulk-thumb-remove { opacity: 1; }
+
+  /* drag-reorder highlight */
+  .bulk-thumb.drag-src { opacity: 0.4; }
+  .bulk-thumb.drag-target { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .bulk-collages-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .bulk-collage-card {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    flex-shrink: 0;
+  }
+  .bulk-collage-card:hover {
+    border-color: var(--accent);
+    transform: scale(1.03);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .bulk-collage-card img {
+    display: block;
+    width: 150px;
+    height: auto;
+  }
+  .bulk-collage-num {
+    position: absolute;
+    bottom: 6px; left: 6px;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 2px 7px;
+    pointer-events: none;
+  }
+  .bulk-card-dl {
+    position: absolute;
+    bottom: 6px; right: 6px;
+    width: 26px; height: 26px;
+    background: rgba(0,0,0,0.7);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .bulk-collage-card:hover .bulk-card-dl { opacity: 1; }
+
+  .bulk-generating {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    flex-shrink: 0;
+  }
+
+  /* hidden inputs */
+  #file-input, #bulk-file-input { display: none; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #2a2a35;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 13px;
+    color: var(--text);
+    opacity: 0;
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Collage Maker</h1>
+  <!-- Single-mode buttons -->
+  <button class="btn btn-ghost" id="clear-btn">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    Clear All
+  </button>
+  <button class="btn btn-primary" id="export-btn">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Export PNG
+  </button>
+</header>
+
+<div class="workspace">
+  <aside class="sidebar">
+
+    <div class="sidebar-section">
+      <h2>Layout</h2>
+      <div class="layout-grid" id="layout-grid"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <h2>Spacing</h2>
+      <div class="control-row">
+        <span class="control-label">Gap</span>
+        <div class="control-right">
+          <input type="range" id="gap-slider" min="0" max="40" value="6">
+          <span class="range-val" id="gap-val">6px</span>
+        </div>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Padding</span>
+        <div class="control-right">
+          <input type="range" id="pad-slider" min="0" max="40" value="6">
+          <span class="range-val" id="pad-val">6px</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h2>Colors</h2>
+      <div class="control-row">
+        <span class="control-label">Background</span>
+        <div class="control-right">
+          <input type="color" id="bg-color" value="#111114">
+        </div>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Gap color</span>
+        <div class="control-right">
+          <input type="color" id="gap-color" value="#111114">
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h2>Canvas size</h2>
+      <div class="control-row">
+        <span class="control-label">Width (px)</span>
+        <div class="control-right">
+          <input type="number" id="canvas-w" value="900" min="200" max="4000"
+            style="width:72px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-size:13px;outline:none;">
+        </div>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Height (px)</span>
+        <div class="control-right">
+          <input type="number" id="canvas-h" value="900" min="200" max="4000"
+            style="width:72px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-size:13px;outline:none;">
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <main class="canvas-area" id="canvas-area">
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="mode-single-btn">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+        Single
+      </button>
+      <button class="mode-btn" id="mode-bulk-btn">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+        Bulk
+      </button>
+    </div>
+
+    <!-- Single panel -->
+    <div id="panel-single">
+      <div id="collage-container">
+        <div id="collage-grid"></div>
+      </div>
+    </div>
+
+    <!-- Bulk panel -->
+    <div id="panel-bulk" style="display:none">
+
+      <!-- Drop zone (shown when no images) -->
+      <div class="bulk-drop-zone" id="bulk-drop-zone">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style="display:block;margin:0 auto 12px;">
+          <path d="M4 16l4-4 3 3 4-5 5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <p>Drop images here or click to upload</p>
+        <span>Select multiple images — they'll be split into collages automatically</span>
+      </div>
+
+      <!-- Images section -->
+      <div class="bulk-section" id="bulk-images-section" style="display:none">
+        <div class="bulk-section-header">
+          <span class="bulk-section-title">Images</span>
+          <span class="bulk-section-meta" id="bulk-img-meta"></span>
+          <button class="btn btn-ghost btn-sm" id="bulk-add-more-btn">+ Add more</button>
+          <button class="btn btn-ghost btn-sm" id="bulk-clear-btn">Clear all</button>
+        </div>
+        <div class="bulk-section-body">
+          <div class="bulk-images-grid" id="bulk-images-grid"></div>
+        </div>
+      </div>
+
+      <!-- Collages section -->
+      <div class="bulk-section" id="bulk-collages-section" style="display:none">
+        <div class="bulk-section-header">
+          <span class="bulk-section-title">Generated Collages</span>
+          <span class="bulk-section-meta" id="bulk-collage-meta"></span>
+          <button class="btn btn-primary btn-sm" id="bulk-export-zip-btn">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Export all as ZIP
+          </button>
+        </div>
+        <div class="bulk-section-body">
+          <div id="bulk-collages-body">
+            <div class="bulk-generating" id="bulk-generating" style="display:none">
+              <div class="spinner"></div>
+              <span>Rendering collages…</span>
+            </div>
+            <div class="bulk-collages-grid" id="bulk-collages-grid"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<input type="file" id="file-input" accept="image/*">
+<input type="file" id="bulk-file-input" accept="image/*" multiple>
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+//  LAYOUTS
+// ─────────────────────────────────────────────
+const LAYOUTS = [
+  { label:'1×1', cols:1, rows:1 },
+  { label:'1×2', cols:1, rows:2 },
+  { label:'2×1', cols:2, rows:1 },
+  { label:'2×2', cols:2, rows:2 },
+  { label:'3×1', cols:3, rows:1 },
+  { label:'1×3', cols:1, rows:3 },
+  { label:'2×3', cols:2, rows:3 },
+  { label:'3×2', cols:3, rows:2 },
+  { label:'3×3', cols:3, rows:3 },
+];
+
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let mode = 'single'; // 'single' | 'bulk'
+
+const state = {
+  layoutIndex: 3,
+  gap: 6,
+  padding: 6,
+  bgColor: '#111114',
+  gapColor: '#111114',
+  canvasW: 900,
+  canvasH: 900,
+  cells: [],
+};
+
+let bulkImages   = []; // [{img, src}]
+let bulkBlobs    = []; // Blob[] – rendered PNGs for export
+let bulkObjURLs  = []; // object URLs for preview (revoked on re-generate)
+let bulkGenPending = false;
+
+// ─────────────────────────────────────────────
+//  DOM REFS
+// ─────────────────────────────────────────────
+const collageContainer    = document.getElementById('collage-container');
+const collageGrid         = document.getElementById('collage-grid');
+const layoutGridEl        = document.getElementById('layout-grid');
+const gapSlider           = document.getElementById('gap-slider');
+const padSlider           = document.getElementById('pad-slider');
+const gapVal              = document.getElementById('gap-val');
+const padVal              = document.getElementById('pad-val');
+const bgColorIn           = document.getElementById('bg-color');
+const gapColorIn          = document.getElementById('gap-color');
+const canvasWIn           = document.getElementById('canvas-w');
+const canvasHIn           = document.getElementById('canvas-h');
+const fileInput           = document.getElementById('file-input');
+const bulkFileInput       = document.getElementById('bulk-file-input');
+const exportBtn           = document.getElementById('export-btn');
+const clearBtn            = document.getElementById('clear-btn');
+const toast               = document.getElementById('toast');
+const modeSingleBtn       = document.getElementById('mode-single-btn');
+const modeBulkBtn         = document.getElementById('mode-bulk-btn');
+const panelSingle         = document.getElementById('panel-single');
+const panelBulk           = document.getElementById('panel-bulk');
+const bulkDropZone        = document.getElementById('bulk-drop-zone');
+const bulkImagesSection   = document.getElementById('bulk-images-section');
+const bulkImgMeta         = document.getElementById('bulk-img-meta');
+const bulkImagesGrid      = document.getElementById('bulk-images-grid');
+const bulkAddMoreBtn      = document.getElementById('bulk-add-more-btn');
+const bulkClearBtn        = document.getElementById('bulk-clear-btn');
+const bulkCollagesSection = document.getElementById('bulk-collages-section');
+const bulkCollageMeta     = document.getElementById('bulk-collage-meta');
+const bulkGenerating      = document.getElementById('bulk-generating');
+const bulkCollagesGrid    = document.getElementById('bulk-collages-grid');
+const bulkExportZipBtn    = document.getElementById('bulk-export-zip-btn');
+
+// ─────────────────────────────────────────────
+//  TOAST
+// ─────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ─────────────────────────────────────────────
+//  MODE SWITCH
+// ─────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  modeSingleBtn.classList.toggle('active', m === 'single');
+  modeBulkBtn.classList.toggle('active', m === 'bulk');
+  panelSingle.style.display  = m === 'single' ? '' : 'none';
+  panelBulk.style.display    = m === 'bulk'   ? '' : 'none';
+  clearBtn.style.display     = m === 'single' ? '' : 'none';
+  exportBtn.style.display    = m === 'single' ? '' : 'none';
+}
+
+modeSingleBtn.addEventListener('click', () => setMode('single'));
+modeBulkBtn.addEventListener('click',   () => setMode('bulk'));
+
+// ─────────────────────────────────────────────
+//  LAYOUT SELECTOR
+// ─────────────────────────────────────────────
+function buildLayoutSelector() {
+  layoutGridEl.innerHTML = '';
+  LAYOUTS.forEach((layout, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'layout-btn' + (i === state.layoutIndex ? ' active' : '');
+
+    const preview = document.createElement('div');
+    preview.className = 'layout-preview';
+    preview.style.gridTemplateColumns = `repeat(${layout.cols}, 1fr)`;
+    preview.style.gridTemplateRows    = `repeat(${layout.rows}, 1fr)`;
+
+    for (let j = 0; j < layout.cols * layout.rows; j++) {
+      const c = document.createElement('div');
+      c.className = 'layout-preview-cell';
+      preview.appendChild(c);
+    }
+
+    const label = document.createElement('span');
+    label.className = 'layout-label';
+    label.textContent = layout.label;
+
+    btn.appendChild(preview);
+    btn.appendChild(label);
+    btn.addEventListener('click', () => selectLayout(i));
+    layoutGridEl.appendChild(btn);
+  });
+}
+
+function selectLayout(index) {
+  state.layoutIndex = index;
+  document.querySelectorAll('.layout-btn').forEach((b, i) => b.classList.toggle('active', i === index));
+  rebuildCells();
+  renderGrid();
+  if (mode === 'bulk' && bulkImages.length) scheduleBulkGenerate();
+}
+
+// ─────────────────────────────────────────────
+//  SINGLE MODE – CELLS
+// ─────────────────────────────────────────────
+function rebuildCells() {
+  const { cols, rows } = LAYOUTS[state.layoutIndex];
+  const old = state.cells.slice();
+  state.cells = Array.from({ length: cols * rows }, (_, i) =>
+    old[i] || { img: null, src: null, x: 0, y: 0, scale: 1 }
+  );
+}
+
+function renderGrid() {
+  const { cols, rows } = LAYOUTS[state.layoutIndex];
+  const maxW    = Math.min(600, window.innerWidth - 320);
+  const aspect  = state.canvasH / state.canvasW;
+  const prevW   = maxW;
+  const prevH   = maxW * aspect;
+
+  collageContainer.style.width      = prevW + 'px';
+  collageContainer.style.height     = prevH + 'px';
+  collageContainer.style.background = state.bgColor;
+
+  collageGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  collageGrid.style.gridTemplateRows    = `repeat(${rows}, 1fr)`;
+  collageGrid.style.gap        = state.gap + 'px';
+  collageGrid.style.padding    = state.padding + 'px';
+  collageGrid.style.background = state.gapColor;
+  collageGrid.style.width  = '100%';
+  collageGrid.style.height = '100%';
+  collageGrid.innerHTML = '';
+
+  state.cells.forEach((cell, idx) => {
+    const el = document.createElement('div');
+    el.className = 'collage-cell' + (cell.img ? ' has-image' : '');
+    el.dataset.idx = idx;
+
+    const empty = document.createElement('div');
+    empty.className = 'cell-empty';
+    empty.innerHTML = `
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M3 16l5-5 4 4 2-2 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Drop or click</span>`;
+    el.appendChild(empty);
+
+    if (cell.img) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'cell-img-wrapper';
+      const img = document.createElement('img');
+      img.src = cell.src;
+      img.draggable = false;
+      wrapper.appendChild(img);
+      el.appendChild(wrapper);
+      applyTransform(el, cell);
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'cell-overlay';
+    if (cell.img) {
+      const rb = document.createElement('button');
+      rb.className = 'cell-replace-btn';
+      rb.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M13.5 2.5l-11 11M2.5 2.5l11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Replace`;
+      rb.addEventListener('click', e => { e.stopPropagation(); openFilePicker(idx); });
+      overlay.appendChild(rb);
+    }
+    el.appendChild(overlay);
+
+    bindCellEvents(el, idx);
+    collageGrid.appendChild(el);
+  });
+}
+
+function applyTransform(cellEl, cellData) {
+  const w = cellEl.querySelector('.cell-img-wrapper');
+  if (w) w.style.transform = `translate(${cellData.x}px, ${cellData.y}px) scale(${cellData.scale})`;
+}
+
+// ─────────────────────────────────────────────
+//  SINGLE FILE PICKER
+// ─────────────────────────────────────────────
+let pendingCellIdx = null;
+
+function openFilePicker(idx) {
+  pendingCellIdx = idx;
+  fileInput.value = '';
+  fileInput.click();
+}
+
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files[0];
+  if (!file || pendingCellIdx === null) return;
+  loadImageIntoCell(pendingCellIdx, file);
+});
+
+function loadImageIntoCell(idx, file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.cells[idx] = { img, src: e.target.result, x: 0, y: 0, scale: 1 };
+      renderGrid();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─────────────────────────────────────────────
+//  CELL EVENTS (pan + pinch zoom)
+// ─────────────────────────────────────────────
+function bindCellEvents(el, idx) {
+  el.addEventListener('click', () => { if (!state.cells[idx].img) openFilePicker(idx); });
+  el.addEventListener('dragover',  e => { e.preventDefault(); el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+  el.addEventListener('drop', e => {
+    e.preventDefault();
+    el.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadImageIntoCell(idx, file);
+  });
+
+  if (!state.cells[idx].img) return;
+
+  let dragging = false, startX, startY, startCX, startCY;
+
+  el.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    startCX = state.cells[idx].x; startCY = state.cells[idx].y;
+    el.style.cursor = 'grabbing';
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    state.cells[idx].x = startCX + (e.clientX - startX);
+    state.cells[idx].y = startCY + (e.clientY - startY);
+    applyTransform(el, state.cells[idx]);
+  });
+  window.addEventListener('mouseup', () => {
+    if (dragging) { dragging = false; el.style.cursor = 'grab'; }
+  });
+
+  el.addEventListener('wheel', e => {
+    e.preventDefault();
+    const d = e.deltaY > 0 ? -0.08 : 0.08;
+    state.cells[idx].scale = Math.max(0.5, Math.min(6, state.cells[idx].scale + d));
+    applyTransform(el, state.cells[idx]);
+  }, { passive: false });
+
+  let lastTouches = null, lastDist = null;
+  el.addEventListener('touchstart', e => {
+    e.preventDefault();
+    lastTouches = e.touches;
+    if (e.touches.length === 2) lastDist = touchDist(e.touches);
+    startCX = state.cells[idx].x; startCY = state.cells[idx].y;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+  }, { passive: false });
+  el.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      state.cells[idx].x = startCX + (e.touches[0].clientX - startX);
+      state.cells[idx].y = startCY + (e.touches[0].clientY - startY);
+    } else if (e.touches.length === 2) {
+      const dist = touchDist(e.touches);
+      if (lastDist) state.cells[idx].scale = Math.max(0.5, Math.min(6, state.cells[idx].scale * (dist / lastDist)));
+      lastDist = dist;
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const mx0 = (lastTouches[0].clientX + lastTouches[1].clientX) / 2;
+      const my0 = (lastTouches[0].clientY + lastTouches[1].clientY) / 2;
+      state.cells[idx].x += mx - mx0;
+      state.cells[idx].y += my - my0;
+    }
+    lastTouches = e.touches;
+    applyTransform(el, state.cells[idx]);
+  }, { passive: false });
+  el.addEventListener('touchend', () => { lastDist = null; });
+  el.style.cursor = 'grab';
+}
+
+function touchDist(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
+
+// ─────────────────────────────────────────────
+//  CONTROLS
+// ─────────────────────────────────────────────
+gapSlider.addEventListener('input', () => {
+  state.gap = +gapSlider.value;
+  gapVal.textContent = state.gap + 'px';
+  renderGrid();
+  if (mode === 'bulk' && bulkImages.length) scheduleBulkGenerate();
+});
+padSlider.addEventListener('input', () => {
+  state.padding = +padSlider.value;
+  padVal.textContent = state.padding + 'px';
+  renderGrid();
+  if (mode === 'bulk' && bulkImages.length) scheduleBulkGenerate();
+});
+bgColorIn.addEventListener('input', () => {
+  state.bgColor = bgColorIn.value;
+  collageContainer.style.background = state.bgColor;
+  if (mode === 'bulk' && bulkImages.length) scheduleBulkGenerate();
+});
+gapColorIn.addEventListener('input', () => {
+  state.gapColor = gapColorIn.value;
+  collageGrid.style.background = state.gapColor;
+  if (mode === 'bulk' && bulkImages.length) scheduleBulkGenerate();
+});
+canvasWIn.addEventListener('change', () => {
+  state.canvasW = Math.max(200, Math.min(4000, +canvasWIn.value || 900));
+  canvasWIn.value = state.canvasW;
+  renderGrid();
+  if (mode === 'bulk' && bulkImages.length) scheduleBulkGenerate();
+});
+canvasHIn.addEventListener('change', () => {
+  state.canvasH = Math.max(200, Math.min(4000, +canvasHIn.value || 900));
+  canvasHIn.value = state.canvasH;
+  renderGrid();
+  if (mode === 'bulk' && bulkImages.length) scheduleBulkGenerate();
+});
+
+clearBtn.addEventListener('click', () => {
+  state.cells.forEach(c => { c.img = null; c.src = null; c.x = 0; c.y = 0; c.scale = 1; });
+  renderGrid();
+  showToast('All cells cleared');
+});
+
+// ─────────────────────────────────────────────
+//  SHARED RENDER FUNCTION
+// ─────────────────────────────────────────────
+// cells: array of {img, x, y, scale} | null
+// previewCellW/H: pass actual preview dimensions for single-mode pan scaling;
+//                 pass 0 for bulk (x/y are always 0)
+async function renderCollageToBlob(cells, previewCellW, previewCellH) {
+  const { cols, rows } = LAYOUTS[state.layoutIndex];
+  const SCALE = 2;
+  const W   = state.canvasW * SCALE;
+  const H   = state.canvasH * SCALE;
+  const gap = state.gap * SCALE;
+  const pad = state.padding * SCALE;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = state.gapColor;
+  ctx.fillRect(0, 0, W, H);
+
+  const usableW = W - pad * 2 - gap * (cols - 1);
+  const usableH = H - pad * 2 - gap * (rows - 1);
+  const cellW   = usableW / cols;
+  const cellH   = usableH / rows;
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const idx  = row * cols + col;
+      const cell = cells[idx];
+      const cx   = pad + col * (cellW + gap);
+      const cy   = pad + row * (cellH + gap);
+
+      ctx.fillStyle = '#222228';
+      ctx.fillRect(cx, cy, cellW, cellH);
+
+      if (!cell || !cell.img) continue;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(cx, cy, cellW, cellH);
+      ctx.clip();
+
+      const img    = cell.img;
+      const ia     = img.naturalWidth / img.naturalHeight;
+      const ca     = cellW / cellH;
+      let drawW, drawH;
+      if (ia > ca) { drawH = cellH; drawW = drawH * ia; }
+      else         { drawW = cellW; drawH = drawW / ia; }
+
+      let ox = (cellW - drawW) / 2;
+      let oy = (cellH - drawH) / 2;
+
+      // Pan offset (only relevant when previewCellW/H > 0)
+      if (previewCellW > 0 && previewCellH > 0) {
+        ox += cell.x * (cellW / previewCellW);
+        oy += cell.y * (cellH / previewCellH);
+      }
+
+      const zW = drawW * cell.scale;
+      const zH = drawH * cell.scale;
+      ctx.drawImage(img, cx + ox + (drawW - zW) / 2, cy + oy + (drawH - zH) / 2, zW, zH);
+      ctx.restore();
+    }
+  }
+
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+// ─────────────────────────────────────────────
+//  SINGLE EXPORT
+// ─────────────────────────────────────────────
+exportBtn.addEventListener('click', async () => {
+  exportBtn.disabled = true;
+  try {
+    const { cols, rows } = LAYOUTS[state.layoutIndex];
+    const gr = collageGrid.getBoundingClientRect();
+    const pCW = (gr.width  - state.gap * (cols - 1) - state.padding * 2) / cols;
+    const pCH = (gr.height - state.gap * (rows - 1) - state.padding * 2) / rows;
+    const blob = await renderCollageToBlob(state.cells, pCW, pCH);
+    downloadBlob(blob, 'collage.png');
+    showToast('Exported collage.png');
+  } finally {
+    exportBtn.disabled = false;
+  }
+});
+
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href    = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ─────────────────────────────────────────────
+//  BULK – IMAGE MANAGEMENT
+// ─────────────────────────────────────────────
+// Drop zone click → open file picker
+bulkDropZone.addEventListener('click', () => { bulkFileInput.value = ''; bulkFileInput.click(); });
+bulkDropZone.addEventListener('dragover',  e => { e.preventDefault(); bulkDropZone.classList.add('drag-over'); });
+bulkDropZone.addEventListener('dragleave', () => bulkDropZone.classList.remove('drag-over'));
+bulkDropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  bulkDropZone.classList.remove('drag-over');
+  addBulkFiles(e.dataTransfer.files);
+});
+
+bulkFileInput.addEventListener('change', () => addBulkFiles(bulkFileInput.files));
+bulkAddMoreBtn.addEventListener('click', () => { bulkFileInput.value = ''; bulkFileInput.click(); });
+bulkClearBtn.addEventListener('click', () => {
+  bulkImages = [];
+  revokeObjURLs();
+  bulkBlobs = [];
+  renderBulkImages();
+  bulkCollagesSection.style.display = 'none';
+  showToast('Bulk images cleared');
+});
+
+function addBulkFiles(fileList) {
+  const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
+  let loaded = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        bulkImages.push({ img, src: e.target.result });
+        loaded++;
+        if (loaded === files.length) {
+          renderBulkImages();
+          scheduleBulkGenerate();
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderBulkImages() {
+  const count = bulkImages.length;
+  if (count === 0) {
+    bulkImagesSection.style.display = 'none';
+    bulkDropZone.style.display      = '';
+    return;
+  }
+  bulkDropZone.style.display    = 'none';
+  bulkImagesSection.style.display = '';
+
+  const { cols, rows } = LAYOUTS[state.layoutIndex];
+  const cellCount    = cols * rows;
+  const collageCount = Math.ceil(count / cellCount);
+  bulkImgMeta.textContent = `${count} image${count !== 1 ? 's' : ''} → ${collageCount} collage${collageCount !== 1 ? 's' : ''}`;
+
+  bulkImagesGrid.innerHTML = '';
+  bulkImages.forEach((item, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'bulk-thumb';
+    thumb.draggable = true;
+    thumb.dataset.idx = i;
+
+    const img = document.createElement('img');
+    img.src = item.src;
+
+    const num = document.createElement('span');
+    num.className = 'bulk-thumb-num';
+    num.textContent = i + 1;
+
+    const rm = document.createElement('button');
+    rm.className = 'bulk-thumb-remove';
+    rm.textContent = '×';
+    rm.title = 'Remove';
+    rm.addEventListener('click', e => {
+      e.stopPropagation();
+      bulkImages.splice(i, 1);
+      renderBulkImages();
+      scheduleBulkGenerate();
+    });
+
+    thumb.appendChild(img);
+    thumb.appendChild(num);
+    thumb.appendChild(rm);
+    bindThumbDrag(thumb);
+    bulkImagesGrid.appendChild(thumb);
+  });
+}
+
+// ── Thumbnail drag-to-reorder ──
+let dragSrcIdx = null;
+
+function bindThumbDrag(thumb) {
+  thumb.addEventListener('dragstart', e => {
+    dragSrcIdx = +thumb.dataset.idx;
+    thumb.classList.add('drag-src');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  thumb.addEventListener('dragend', () => {
+    thumb.classList.remove('drag-src');
+    document.querySelectorAll('.bulk-thumb').forEach(t => t.classList.remove('drag-target'));
+  });
+  thumb.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.bulk-thumb').forEach(t => t.classList.remove('drag-target'));
+    thumb.classList.add('drag-target');
+  });
+  thumb.addEventListener('drop', e => {
+    e.preventDefault();
+    const targetIdx = +thumb.dataset.idx;
+    if (dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+    // Reorder
+    const [moved] = bulkImages.splice(dragSrcIdx, 1);
+    bulkImages.splice(targetIdx, 0, moved);
+    dragSrcIdx = null;
+    renderBulkImages();
+    scheduleBulkGenerate();
+  });
+}
+
+// ─────────────────────────────────────────────
+//  BULK – COLLAGE GENERATION
+// ─────────────────────────────────────────────
+function scheduleBulkGenerate() {
+  if (bulkGenPending) return;
+  bulkGenPending = true;
+  // Small debounce so rapid slider changes don't flood renders
+  setTimeout(generateBulkCollages, 120);
+}
+
+async function generateBulkCollages() {
+  bulkGenPending = false;
+
+  const { cols, rows } = LAYOUTS[state.layoutIndex];
+  const cellCount    = cols * rows;
+  const collageCount = Math.ceil(bulkImages.length / cellCount);
+
+  bulkCollagesSection.style.display = '';
+  bulkCollageMeta.textContent = '';
+  bulkCollagesGrid.innerHTML  = '';
+  bulkGenerating.style.display = '';
+  bulkExportZipBtn.disabled    = true;
+
+  // Revoke old preview URLs
+  revokeObjURLs();
+  bulkBlobs   = [];
+  bulkObjURLs = [];
+
+  // Generate each collage sequentially (avoids too many canvases at once)
+  for (let i = 0; i < collageCount; i++) {
+    const group = [];
+    for (let j = 0; j < cellCount; j++) {
+      const imgIdx = i * cellCount + j;
+      group.push(imgIdx < bulkImages.length
+        ? { img: bulkImages[imgIdx].img, src: bulkImages[imgIdx].src, x: 0, y: 0, scale: 1 }
+        : null
+      );
+    }
+    const blob = await renderCollageToBlob(group, 0, 0);
+    bulkBlobs.push(blob);
+    bulkObjURLs.push(URL.createObjectURL(blob));
+  }
+
+  bulkGenerating.style.display = 'none';
+  bulkCollageMeta.textContent  = `${collageCount} collage${collageCount !== 1 ? 's' : ''}`;
+  bulkExportZipBtn.disabled    = false;
+
+  // Render preview cards
+  bulkObjURLs.forEach((url, i) => {
+    const card = document.createElement('div');
+    card.className = 'bulk-collage-card';
+
+    const img = document.createElement('img');
+    img.src = url;
+
+    const num = document.createElement('span');
+    num.className = 'bulk-collage-num';
+    num.textContent = `#${i + 1}`;
+
+    const dl = document.createElement('button');
+    dl.className = 'bulk-card-dl';
+    dl.title = 'Download';
+    dl.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    dl.addEventListener('click', e => { e.stopPropagation(); downloadBlob(bulkBlobs[i], `collage-${i + 1}.png`); });
+
+    card.appendChild(img);
+    card.appendChild(num);
+    card.appendChild(dl);
+    bulkCollagesGrid.appendChild(card);
+  });
+}
+
+function revokeObjURLs() {
+  bulkObjURLs.forEach(u => URL.revokeObjectURL(u));
+  bulkObjURLs = [];
+}
+
+// ─────────────────────────────────────────────
+//  BULK – ZIP EXPORT
+// ─────────────────────────────────────────────
+bulkExportZipBtn.addEventListener('click', async () => {
+  if (!bulkBlobs.length) return;
+  bulkExportZipBtn.disabled = true;
+  showToast('Building ZIP…');
+  try {
+    const files = bulkBlobs.map((blob, i) => ({
+      name: `collage-${String(i + 1).padStart(2, '0')}.png`,
+      blob,
+    }));
+    const zip = await buildZip(files);
+    downloadBlob(new Blob([zip], { type: 'application/zip' }), 'collages.zip');
+    showToast(`Exported ${bulkBlobs.length} collages → collages.zip`);
+  } finally {
+    bulkExportZipBtn.disabled = false;
+  }
+});
+
+// ─────────────────────────────────────────────
+//  ZIP BUILDER (vanilla JS, STORE / no compression)
+// ─────────────────────────────────────────────
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(buf) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+async function buildZip(files) {
+  // files: [{name: string, blob: Blob}]
+  const enc       = new TextEncoder();
+  const locals    = [];   // Uint8Array[]
+  const centrals  = [];   // Uint8Array[]
+  const localOffs = [];   // byte offset of each local header
+  let offset = 0;
+
+  for (const file of files) {
+    const data      = new Uint8Array(await file.blob.arrayBuffer());
+    const nameBytes = enc.encode(file.name);
+    const crc       = crc32(data);
+    const size      = data.length;
+
+    localOffs.push(offset);
+
+    // Local file header (30 + name)
+    const lh  = new Uint8Array(30 + nameBytes.length);
+    const lv  = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0, true);
+    lv.setUint16(8, 0, true);           // STORE
+    lv.setUint16(10, 0, true);
+    lv.setUint16(12, 0, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, size, true);
+    lv.setUint32(22, size, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+
+    locals.push(lh, data);
+    offset += lh.length + data.length;
+
+    // Central directory entry (46 + name)
+    const cd  = new Uint8Array(46 + nameBytes.length);
+    const cv  = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0, true);
+    cv.setUint16(10, 0, true);          // STORE
+    cv.setUint16(12, 0, true);
+    cv.setUint16(14, 0, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, size, true);
+    cv.setUint32(24, size, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, localOffs[localOffs.length - 1], true);
+    cd.set(nameBytes, 46);
+    centrals.push(cd);
+  }
+
+  const cdSize = centrals.reduce((s, b) => s + b.length, 0);
+
+  // End of central directory (22 bytes)
+  const eocd = new Uint8Array(22);
+  const ev   = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+  ev.setUint16(20, 0, true);
+
+  const parts = [...locals, ...centrals, eocd];
+  const total = parts.reduce((s, b) => s + b.length, 0);
+  const out   = new Uint8Array(total);
+  let pos = 0;
+  for (const p of parts) { out.set(p, pos); pos += p.length; }
+  return out;
+}
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+function init() {
+  buildLayoutSelector();
+  rebuildCells();
+  renderGrid();
+  window.addEventListener('resize', renderGrid);
+}
+
+init();
+</script>
+</body>
+</html>
