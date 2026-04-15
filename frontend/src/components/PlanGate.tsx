@@ -11,6 +11,9 @@ interface Props {
 }
 
 export default function PlanGate({ minPlan, children }: Props) {
+  // Bypass for demo
+  return <>{children}</>
+
   const navigate = useNavigate()
   const userPlan = (useAuthStore(s => s.user?.plan) || 'free') as Plan
   const level = PLAN_LEVEL[userPlan] ?? 0
