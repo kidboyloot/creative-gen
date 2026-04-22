@@ -243,9 +243,9 @@ export default function Layout() {
                   ? <img src={user.avatar} alt="" className="w-full h-full object-cover" />
                   : <User size={13} className="text-brand-400" />}
               </div>
-              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate('/edit-profile')}>
+              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate('/edit-profile')} title={user.email}>
                 <p className="text-[12px] font-semibold text-white truncate leading-tight">{user.name}</p>
-                <p className="text-[10px] text-gray-600 truncate">{user.email}</p>
+                <p className="text-[10px] text-gray-600 break-all leading-tight">{user.email}</p>
               </div>
               <button onClick={handleLogout} className="w-6 h-6 rounded-md bg-white/[0.04] hover:bg-red-500/20 flex items-center justify-center text-gray-500 hover:text-red-400 transition" title="Sign out">
                 <LogOut size={12} />
