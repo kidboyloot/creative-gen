@@ -9,7 +9,7 @@
 	# mutually exclusive — a bare `reverse_proxy @backend` outside the handles
 	# below never gets evaluated, the catch-all `handle` swallows the request
 	# first and Caddy answers /auth/login etc. as a missing static file (405).
-	@backend path /auth* /shopify* /upload* /generate* /history* /download* /files* /spaces* /video* /tools* /voice* /adgenius* /chat* /image-edit* /avatar* /translate* /profile*
+	@backend path /auth* /shopify* /upload* /generate* /history* /download* /files* /spaces* /video* /tools* /voice* /adgenius* /chat* /image-edit* /avatar* /translate* /profile* /teams*
 	handle @backend {
 		reverse_proxy 127.0.0.1:8000
 	}

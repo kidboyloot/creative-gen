@@ -21,6 +21,8 @@ from routers.auth import require_user
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
+MAX_TEAM_MEMBERS = 3
+
 
 # ── Schemas ──
 
@@ -162,6 +164,15 @@ async def join_team(
     team = session.exec(select(Team).where(Team.invite_code == code)).first()
     if not team:
         raise HTTPException(404, "Invite code not recognised.")
+
+    current_count = len(
+        session.exec(select(TeamMember).where(TeamMember.team_id == team.id)).all()
+    )
+    if current_count >= MAX_TEAM_MEMBERS:
+        raise HTTPException(
+            400,
+            f"This team is full ({MAX_TEAM_MEMBERS} members max). Ask the owner to remove someone first.",
+        )
 
     membership = TeamMember(team_id=team.id, user_id=user.id, role="member")
     session.add(membership)

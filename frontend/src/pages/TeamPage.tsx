@@ -158,7 +158,7 @@ export default function TeamPage() {
 						>
 							<Plus size={18} className="text-brand-400 mb-2" />
 							<p className="text-sm font-semibold text-white">Create a team</p>
-							<p className="text-xs text-gray-500 mt-1">You become the owner. Invite up to 10 teammates.</p>
+							<p className="text-xs text-gray-500 mt-1">You become the owner. Up to 3 members total.</p>
 						</button>
 						<button
 							onClick={() => { setJoining(true); setError(null) }}
@@ -225,7 +225,7 @@ export default function TeamPage() {
 				<div>
 					<h1 className="text-2xl font-bold text-white">{team.name}</h1>
 					<p className="text-sm text-gray-400 mt-1">
-						<span className="capitalize">{team.plan}</span> plan · <span className="text-brand-400 font-semibold">{team.credits}</span> shared credits · {team.members.length} member{team.members.length === 1 ? '' : 's'}
+						<span className="capitalize">{team.plan}</span> plan · <span className="text-brand-400 font-semibold">{team.credits}</span> shared credits · {team.members.length} / 3 member{team.members.length === 1 ? '' : 's'}
 					</p>
 				</div>
 				<button
