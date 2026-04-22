@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageOps
 from typing import List, Optional
 
 DIMENSIONS = {
@@ -25,6 +25,11 @@ LAYOUTS = [
     {"id": "hero_right", "label": "Hero Right", "description": "Big right + 2 stacked left", "min_images": 3},
     {"id": "hero_bottom", "label": "Hero Bottom", "description": "2 cells on top + big bottom", "min_images": 3},
     {"id": "bg_overlay", "label": "Background + Overlays", "description": "Full background with 2 corner overlays", "min_images": 3},
+    # Magazine-style mosaics with 4–6 cells (jewellery / e-com showcase grids)
+    {"id": "mosaic_6_left", "label": "Mosaic 6 (Hero TL)", "description": "Hero top-left + 2 stacked TR + 3 bottom row", "min_images": 4},
+    {"id": "mosaic_6_right", "label": "Mosaic 6 (Hero TR)", "description": "3 stacked left + hero top-right + 2 bottom right", "min_images": 4},
+    {"id": "quad_3_1", "label": "Quad — 3 left + 1", "description": "3 stacked left + 1 hero on the right", "min_images": 4},
+    {"id": "magazine", "label": "Magazine", "description": "3 cells on top + 2 stacked bottom-left + hero bottom-right", "min_images": 4},
     {"id": "auto", "label": "Auto", "description": "Picks best layout based on format and image count", "min_images": 2},
 ]
 
@@ -237,11 +242,79 @@ def make_collage(
         ov2 = _load_fit(paths[2 % n], ov2_w, ov2_h)
         canvas.paste(ov2, ((w - ov2_w) // 2, h - ov2_h - margin))
 
+    elif layout == "mosaic_6_left":
+        # Top half (50% h): hero TL (60% w) + 2 stacked TR (40% w, split 50/50 height)
+        # Bottom half (50% h): 3 cells row
+        top_h = (h - g) // 2
+        bot_h = h - top_h - g
+        hero_w = int((w - g) * 0.6)
+        right_w = w - hero_w - g
+        rh = (top_h - g) // 2
+        # Top
+        canvas.paste(_load_fit(paths[0], hero_w, top_h), (0, 0))
+        canvas.paste(_load_fit(paths[1 % n], right_w, rh), (hero_w + g, 0))
+        canvas.paste(_load_fit(paths[2 % n], right_w, rh), (hero_w + g, rh + g))
+        # Bottom row
+        cw = (w - g * 2) // 3
+        canvas.paste(_load_fit(paths[3 % n], cw, bot_h), (0, top_h + g))
+        canvas.paste(_load_fit(paths[4 % n], cw, bot_h), (cw + g, top_h + g))
+        canvas.paste(_load_fit(paths[5 % n], cw, bot_h), ((cw + g) * 2, top_h + g))
+
+    elif layout == "mosaic_6_right":
+        # Left column (25% w, full height): 3 stacked
+        # Right column (75% w): top hero (60% h) + bottom 2 cells row
+        left_w = int((w - g) * 0.25)
+        right_w = w - left_w - g
+        # Left stacked
+        sh = (h - g * 2) // 3
+        canvas.paste(_load_fit(paths[1 % n], left_w, sh), (0, 0))
+        canvas.paste(_load_fit(paths[2 % n], left_w, sh), (0, sh + g))
+        canvas.paste(_load_fit(paths[3 % n], left_w, sh), (0, (sh + g) * 2))
+        # Right hero + bottom row
+        hero_h = int((h - g) * 0.6)
+        bot_h = h - hero_h - g
+        canvas.paste(_load_fit(paths[0], right_w, hero_h), (left_w + g, 0))
+        bw = (right_w - g) // 2
+        canvas.paste(_load_fit(paths[4 % n], bw, bot_h), (left_w + g, hero_h + g))
+        canvas.paste(_load_fit(paths[5 % n], bw, bot_h), (left_w + g + bw + g, hero_h + g))
+
+    elif layout == "quad_3_1":
+        # Left half: 3 stacked. Right half: 1 hero
+        cw = (w - g) // 2
+        sh = (h - g * 2) // 3
+        canvas.paste(_load_fit(paths[1 % n], cw, sh), (0, 0))
+        canvas.paste(_load_fit(paths[2 % n], cw, sh), (0, sh + g))
+        canvas.paste(_load_fit(paths[3 % n], cw, sh), (0, (sh + g) * 2))
+        canvas.paste(_load_fit(paths[0], cw, h), (cw + g, 0))
+
+    elif layout == "magazine":
+        # Top 30% h: 3 cells row
+        # Bottom 70% h: left 33% w (2 stacked) + right 67% w (hero)
+        top_h = int((h - g) * 0.3)
+        bot_h = h - top_h - g
+        # Top row
+        cw = (w - g * 2) // 3
+        canvas.paste(_load_fit(paths[1 % n], cw, top_h), (0, 0))
+        canvas.paste(_load_fit(paths[2 % n], cw, top_h), (cw + g, 0))
+        canvas.paste(_load_fit(paths[3 % n], cw, top_h), ((cw + g) * 2, 0))
+        # Bottom: 2 stacked left + hero right
+        bl_w = (w - g) // 3
+        br_w = w - bl_w - g
+        sh = (bot_h - g) // 2
+        canvas.paste(_load_fit(paths[4 % n], bl_w, sh), (0, top_h + g))
+        canvas.paste(_load_fit(paths[5 % n], bl_w, sh), (0, top_h + g + sh + g))
+        canvas.paste(_load_fit(paths[0], br_w, bot_h), (bl_w + g, top_h + g))
+
     canvas.save(output_path, quality=95)
     return output_path
 
 
 def _load_fit(path: str, w: int, h: int) -> Image.Image:
+    """Resize an image to fit a (w, h) cell preserving aspect ratio.
+
+    Uses cover + center-crop so the cell is fully filled and the image isn't
+    stretched. Photos with a different aspect ratio than the cell get the
+    overflow trimmed equally from both sides instead of being squashed.
+    """
     img = Image.open(path).convert("RGB")
-    img = img.resize((w, h), Image.LANCZOS)
-    return img
+    return ImageOps.fit(img, (w, h), Image.LANCZOS, centering=(0.5, 0.5))

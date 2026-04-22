@@ -29,6 +29,10 @@ const DEFAULT_LAYOUTS: LayoutOption[] = [
   { id: 'hero_right', label: 'Hero Right', description: 'Big right + 2 stacked left', min_images: 3 },
   { id: 'hero_bottom', label: 'Hero Bottom', description: '2 cells on top + big bottom', min_images: 3 },
   { id: 'bg_overlay', label: 'Background + Overlays', description: 'Full background with 2 corner overlays', min_images: 3 },
+  { id: 'mosaic_6_left', label: 'Mosaic 6 (Hero TL)', description: 'Hero top-left + 2 stacked TR + 3 bottom row', min_images: 4 },
+  { id: 'mosaic_6_right', label: 'Mosaic 6 (Hero TR)', description: '3 stacked left + hero top-right + 2 bottom right', min_images: 4 },
+  { id: 'quad_3_1', label: 'Quad — 3 left + 1', description: '3 stacked left + 1 hero on the right', min_images: 4 },
+  { id: 'magazine', label: 'Magazine', description: '3 cells on top + 2 stacked bottom-left + hero bottom-right', min_images: 4 },
   { id: 'auto', label: 'Auto', description: 'Picks best layout based on format and image count', min_images: 2 },
 ]
 
@@ -180,6 +184,64 @@ const LAYOUT_PREVIEWS: Record<string, React.ReactNode> = {
       <div className="absolute inset-0 bg-current rounded-sm" />
       <div className="absolute top-1 right-1 w-1/3 h-1/4 bg-current rounded-sm opacity-60" />
       <div className="absolute bottom-1 left-1/3 w-1/3 h-1/6 bg-current rounded-sm opacity-60" />
+    </div>
+  ),
+  mosaic_6_left: (
+    <div className="flex flex-col gap-0.5 w-full h-full">
+      <div className="flex-1 flex gap-0.5">
+        <div className="flex-[3] bg-current rounded-sm" />
+        <div className="flex-[2] flex flex-col gap-0.5">
+          <div className="flex-1 bg-current rounded-sm" />
+          <div className="flex-1 bg-current rounded-sm" />
+        </div>
+      </div>
+      <div className="flex-1 flex gap-0.5">
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+      </div>
+    </div>
+  ),
+  mosaic_6_right: (
+    <div className="flex gap-0.5 w-full h-full">
+      <div className="flex-1 flex flex-col gap-0.5">
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+      </div>
+      <div className="flex-[3] flex flex-col gap-0.5">
+        <div className="flex-[3] bg-current rounded-sm" />
+        <div className="flex-[2] flex gap-0.5">
+          <div className="flex-1 bg-current rounded-sm" />
+          <div className="flex-1 bg-current rounded-sm" />
+        </div>
+      </div>
+    </div>
+  ),
+  quad_3_1: (
+    <div className="flex gap-0.5 w-full h-full">
+      <div className="flex-1 flex flex-col gap-0.5">
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+      </div>
+      <div className="flex-1 bg-current rounded-sm" />
+    </div>
+  ),
+  magazine: (
+    <div className="flex flex-col gap-0.5 w-full h-full">
+      <div className="flex-[3] flex gap-0.5">
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+      </div>
+      <div className="flex-[7] flex gap-0.5">
+        <div className="flex-1 flex flex-col gap-0.5">
+          <div className="flex-1 bg-current rounded-sm" />
+          <div className="flex-1 bg-current rounded-sm" />
+        </div>
+        <div className="flex-[2] bg-current rounded-sm" />
+      </div>
     </div>
   ),
   auto: (
