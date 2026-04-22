@@ -4,9 +4,15 @@
 	root * /opt/creative-gen/frontend/dist
 	encode zstd gzip
 
-	# API + backend-served paths → uvicorn on 127.0.0.1:8000
+	# API + backend-served paths → uvicorn on 127.0.0.1:8000.
+	# Has to live inside a `handle` block because Caddy treats `handle`s as
+	# mutually exclusive — a bare `reverse_proxy @backend` outside the handles
+	# below never gets evaluated, the catch-all `handle` swallows the request
+	# first and Caddy answers /auth/login etc. as a missing static file (405).
 	@backend path /auth* /shopify* /upload* /generate* /history* /download* /files* /spaces* /video* /tools* /voice* /adgenius* /chat* /image-edit* /avatar* /translate* /profile*
-	reverse_proxy @backend 127.0.0.1:8000
+	handle @backend {
+		reverse_proxy 127.0.0.1:8000
+	}
 
 	# Welcome landing is a plain static folder (index.html + assets/). Serve it
 	# verbatim without the SPA fallback — otherwise requests to /welcome/ fall
