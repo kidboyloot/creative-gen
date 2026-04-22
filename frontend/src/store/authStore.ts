@@ -2,6 +2,14 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import axios from 'axios'
 
+// In dev, Vite's proxy in vite.config.ts sends /auth, /shopify, etc → localhost:8000.
+// In production (Vercel) there is no proxy, so every request has to carry a full URL.
+// VITE_API_URL is set per-environment in Vercel project settings.
+const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '')
+if (apiBase) {
+  axios.defaults.baseURL = apiBase
+}
+
 interface UserInfo {
   id: string
   email: string
