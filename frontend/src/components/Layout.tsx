@@ -12,7 +12,7 @@ import { useState, useEffect } from 'react'
 import {
   Search, Home, Users, Image, Video, Grid3X3, Lock,
   Clock, FolderOpen, ChevronDown, Zap, LogIn, LogOut, Workflow, LayoutGrid, Languages,
-  Package, Megaphone, Palette, Coins, Plus, User, Mic, Lightbulb, Bot, Paintbrush, UserCircle, BookOpen, Gem,
+  Package, Megaphone, Palette, Coins, User, Mic, Lightbulb, Bot, Paintbrush, UserCircle, BookOpen, Gem,
   Crown, FileEdit, Sparkles, Copy
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -133,13 +133,6 @@ export default function Layout() {
               <Coins size={13} />
               <span className="text-[13px] font-bold flex-1 text-white">{user.credits}</span>
               <span className="text-[9px] text-gray-600 uppercase tracking-wider font-semibold">credits</span>
-              <button
-                onClick={() => axios.post('/auth/credits/add?amount=50').then(r => updateCredits(r.data.credits))}
-                className="w-[18px] h-[18px] rounded-md bg-brand-500/20 hover:bg-brand-500 hover:text-white flex items-center justify-center transition"
-                title="Add credits"
-              >
-                <Plus size={10} />
-              </button>
             </div>
           </div>
         )}
