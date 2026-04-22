@@ -3,7 +3,6 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "rewrites": [
-    { "source": "/welcome/:path*", "destination": "/welcome/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!auth|shopify|upload|generate|history|download|files|spaces|video|tools|voice|adgenius|chat|image-edit|avatar|translate|profile|welcome).*)", "destination": "/index.html" }
   ]
 }
