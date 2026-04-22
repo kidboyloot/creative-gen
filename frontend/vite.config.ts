@@ -22,6 +22,7 @@ export default defineConfig({
       '/avatar': 'http://localhost:8000',
       '/translate': 'http://localhost:8000',
       '/profile': 'http://localhost:8000',
+      '/shopify': 'http://localhost:8000',
     },
   },
 })

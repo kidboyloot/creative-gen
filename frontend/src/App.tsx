@@ -27,6 +27,7 @@ import EditProfilePage from './pages/EditProfilePage'
 import PricingPage from './pages/PricingPage'
 import HomePage from './pages/HomePage'
 import SOPPage from './pages/SOPPage'
+import MultiProductCopyPage from './pages/MultiProductCopyPage'
 
 // Import authStore so axios interceptors are registered on app load
 import './store/authStore'
@@ -62,6 +63,7 @@ export default function App() {
 
           {/* Free tools */}
           <Route path="chat" element={<ChatPage />} />
+          <Route path="multi-product-copy" element={<MultiProductCopyPage />} />
           <Route path="sop/:section" element={<SOPPage />} />
 
           {/* Pro tools */}

@@ -79,6 +79,81 @@ class GeneratedAsset(SQLModel, table=True):
     asset_type: str   # image | video | collage
     format: str       # 1:1 | 9:16
     file_path: str
+    shopify_item_id: Optional[str] = Field(default=None, foreign_key="shopifyimportitem.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     job: Optional[GenerationJob] = Relationship(back_populates="assets")
+
+
+# ── Shopify Multi-Product Copy ──
+
+class ShopifyConnection(SQLModel, table=True):
+    id: str = Field(default_factory=gen_uuid, primary_key=True)
+    user_id: str = Field(foreign_key="user.id", index=True)
+    shop_domain: str                      # "mystore.myshopify.com"
+    shop_name: Optional[str] = None       # human display name from /shop.json
+    # auth_mode:
+    #   "static"  → legacy long-lived shpat_ token in access_token
+    #   "oauth_cc" → client_credentials flow; access_token is refreshed from client_id+secret
+    auth_mode: str = "static"
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    access_token: str = ""                # current token (refreshed automatically for oauth_cc)
+    access_token_expires_at: Optional[datetime] = None
+    currency: str = "USD"
+    locales_json: str = "[]"              # JSON list of locale codes enabled on the store
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ShopifyImportJob(SQLModel, table=True):
+    id: str = Field(default_factory=gen_uuid, primary_key=True)
+    user_id: str = Field(foreign_key="user.id", index=True)
+    connection_id: str = Field(foreign_key="shopifyconnection.id")
+    collection_handle: Optional[str] = None
+    collection_url: str
+    target_locales_json: str = "[]"       # e.g. ["pt","es","fr"]
+    translation_engine: str = "google"    # "google" | "llm"
+    generate_images: bool = False
+    image_prompts_json: str = "[]"        # per-item prompt/model/style payload
+    status: str = "pending"               # pending | running | done | failed
+    step: str = "queued"                  # queued | fetching | translating | generating_images | ready
+    total_products: int = 0
+    done_products: int = 0
+    image_cost_credits: int = 0
+    translate_cost_credits: int = 0
+    error: Optional[str] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ShopifyImportItem(SQLModel, table=True):
+    id: str = Field(default_factory=gen_uuid, primary_key=True)
+    job_id: str = Field(foreign_key="shopifyimportjob.id", index=True)
+    source_product_id: str                # Shopify numeric id as string
+    source_title: str
+    source_description: str = ""
+    source_price: str = "0.00"
+    source_currency: str = "USD"
+    source_tags_json: str = "[]"
+    source_images_json: str = "[]"        # list of {id, src, alt}
+    status: str = "pending"               # pending | ready | pushed | failed
+    shopify_draft_id: Optional[str] = None
+    shopify_draft_url: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ShopifyImportVariant(SQLModel, table=True):
+    id: str = Field(default_factory=gen_uuid, primary_key=True)
+    item_id: str = Field(foreign_key="shopifyimportitem.id", index=True)
+    locale: str                            # "en" | "pt" | ...
+    translated_title: str = ""
+    translated_description: str = ""
+    translated_tags_json: str = "[]"
+    price: str = "0.00"
+    currency: str = "USD"
+    selected_image_ids_json: str = "[]"    # ids of GeneratedAsset rows chosen in review
+    shopify_draft_id: Optional[str] = None
+    shopify_draft_url: Optional[str] = None
+    pushed: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)

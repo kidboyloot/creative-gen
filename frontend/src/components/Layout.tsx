@@ -13,7 +13,7 @@ import {
   Search, Home, Users, Image, Video, Grid3X3, Lock,
   Clock, FolderOpen, ChevronDown, Zap, LogIn, LogOut, Workflow, LayoutGrid, Languages,
   Package, Megaphone, Palette, Coins, Plus, User, Mic, Lightbulb, Bot, Paintbrush, UserCircle, BookOpen, Gem,
-  Crown, FileEdit, Sparkles
+  Crown, FileEdit, Sparkles, Copy
 } from 'lucide-react'
 import clsx from 'clsx'
 import axios from 'axios'
@@ -47,6 +47,7 @@ const navSections: NavSection[] = [
   },
   {
     label: 'DTC / Ecommerce', key: 'dtc', items: [
+      { to: '/multi-product-copy', label: 'Multi-Product Copy', icon: Copy },
       { to: '/jewellery', label: 'Jewellery Ads', icon: Gem, minPlan: 'pro', badge: 'PRO' },
       { to: '/chat', label: 'Chat Assistant', icon: Bot },
     ]

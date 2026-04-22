@@ -29,6 +29,8 @@ CREDIT_COSTS = {
     "upscale": 1,     # 1 credit per upscale
     "bg_remove": 0,   # free
     "enhance": 0,     # free prompt enhancement
+    "shopify_translate": 1,   # 1 credit per (product × locale)
+    "shopify_image_gen": 1,   # 1 credit per AI image slot in the Shopify flow
 }
 
 
