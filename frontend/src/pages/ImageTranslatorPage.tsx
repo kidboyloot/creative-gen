@@ -12,7 +12,7 @@ interface Language {
   name: string
 }
 
-type Tab = 'text' | 'bulk' | 'extract' | 'image'
+type Tab = 'text' | 'bulk' | 'extract' | 'image' | 'audio'
 
 const OCR_LANGS = [
   { code: 'eng', name: 'English' },
@@ -57,6 +57,18 @@ export default function ImageTranslatorPage() {
   const [ocrCopied, setOcrCopied] = useState(false)
   const ocrInputRef = useRef<HTMLInputElement>(null)
 
+  // Audio transcribe + translate
+  const [audioFile, setAudioFile] = useState<File | null>(null)
+  const [audioTarget, setAudioTarget] = useState('en')
+  const [audioLoading, setAudioLoading] = useState(false)
+  const [audioError, setAudioError] = useState('')
+  const [audioTranscript, setAudioTranscript] = useState('')
+  const [audioDetected, setAudioDetected] = useState('')
+  const [audioTranslated, setAudioTranslated] = useState<string | null>(null)
+  const [audioSegments, setAudioSegments] = useState<{ start: number | null; end: number | null; text: string }[]>([])
+  const [audioCopied, setAudioCopied] = useState<'transcript' | 'translated' | null>(null)
+  const audioInputRef = useRef<HTMLInputElement>(null)
+
   const { data: languages = [] } = useQuery<Language[]>({
     queryKey: ['translate-languages'],
     queryFn: () => axios.get<Language[]>('/translate/languages').then(r => r.data),
@@ -65,6 +77,50 @@ export default function ImageTranslatorPage() {
 
   const sourceLangs = languages
   const targetLangs = languages.filter(l => l.code !== 'auto')
+
+  const handleAudioTranscribe = async () => {
+    if (!audioFile) return
+    setAudioError('')
+    setAudioLoading(true)
+    setAudioTranscript('')
+    setAudioTranslated(null)
+    setAudioDetected('')
+    setAudioSegments([])
+    const fd = new FormData()
+    fd.append('file', audioFile)
+    try {
+      const res = await axios.post(`/translate/audio?target=${encodeURIComponent(audioTarget)}`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 0, // Whisper can take a while for long audio
+      })
+      setAudioTranscript(res.data.text || '')
+      setAudioDetected(res.data.detected_language || '')
+      setAudioTranslated(res.data.translated ?? null)
+      setAudioSegments(res.data.segments || [])
+    } catch (err: any) {
+      setAudioError(err?.response?.data?.detail || err?.message || 'Transcription failed')
+    } finally {
+      setAudioLoading(false)
+    }
+  }
+
+  const handleAudioCopy = (which: 'transcript' | 'translated') => {
+    const text = which === 'transcript' ? audioTranscript : (audioTranslated || '')
+    if (!text) return
+    navigator.clipboard.writeText(text)
+    setAudioCopied(which)
+    setTimeout(() => setAudioCopied(null), 2000)
+  }
+
+  const handleAudioReset = () => {
+    setAudioFile(null)
+    setAudioTranscript('')
+    setAudioTranslated(null)
+    setAudioDetected('')
+    setAudioSegments([])
+    setAudioError('')
+    if (audioInputRef.current) audioInputRef.current.value = ''
+  }
 
   const handleTranslate = async () => {
     if (!sourceText.trim()) return
@@ -177,6 +233,7 @@ export default function ImageTranslatorPage() {
     { id: 'bulk', label: 'Bulk Translate', icon: FileText },
     { id: 'extract', label: 'Text Extractor', icon: Type },
     { id: 'image', label: 'Image Translator', icon: ImageIcon },
+    { id: 'audio', label: 'Audio', icon: Volume2 },
   ]
 
   return (
@@ -525,6 +582,152 @@ export default function ImageTranslatorPage() {
             title="Image Text Translator"
             style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
           />
+        </div>
+      )}
+
+      {activeTab === 'audio' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Input */}
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Volume2 size={14} className="text-brand-400" />
+              <h3 className="text-sm font-semibold text-white">Audio / video</h3>
+            </div>
+
+            <input
+              ref={audioInputRef}
+              type="file"
+              accept="audio/*,video/*"
+              onChange={(e) => {
+                const f = e.target.files?.[0] || null
+                setAudioFile(f)
+                setAudioError('')
+              }}
+              className="hidden"
+            />
+
+            {!audioFile ? (
+              <button
+                onClick={() => audioInputRef.current?.click()}
+                className="w-full py-10 rounded-xl border border-dashed border-white/[0.15] hover:border-brand-500/60 text-gray-400 hover:text-brand-400 flex flex-col items-center justify-center transition"
+              >
+                <Upload size={20} className="mb-2" />
+                <p className="text-sm font-medium">Click to upload audio/video</p>
+                <p className="text-[11px] text-gray-500 mt-1">mp3, wav, m4a, webm, mp4… up to the server's limit</p>
+              </button>
+            ) : (
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-brand-500/15 flex items-center justify-center text-brand-400 flex-shrink-0">
+                  <Volume2 size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{audioFile.name}</p>
+                  <p className="text-[11px] text-gray-500">{(audioFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                </div>
+                <button onClick={handleAudioReset} className="text-gray-500 hover:text-red-400 p-1">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Translate to</label>
+              <select
+                value={audioTarget}
+                onChange={(e) => setAudioTarget(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white outline-none focus:border-brand-500/50"
+              >
+                <option value="none">Skip — transcript only</option>
+                {targetLangs.map((l) => (
+                  <option key={l.code} value={l.code}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={handleAudioTranscribe}
+              disabled={!audioFile || audioLoading}
+              className="w-full py-3 rounded-xl font-semibold text-sm bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 transition"
+            >
+              {audioLoading ? <><Loader2 size={14} className="animate-spin" /> Transcribing…</> : <><Volume2 size={14} /> Transcribe & translate</>}
+            </button>
+
+            {audioError && (
+              <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">{audioError}</div>
+            )}
+          </div>
+
+          {/* Output */}
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <FileText size={14} className="text-brand-400" />
+              <h3 className="text-sm font-semibold text-white">Result</h3>
+              {audioDetected && (
+                <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-white/[0.05] text-gray-400 uppercase tracking-wider">
+                  detected: {audioDetected}
+                </span>
+              )}
+            </div>
+
+            {audioLoading && !audioTranscript && (
+              <div className="flex items-center justify-center h-40 text-gray-500">
+                <Loader2 size={24} className="animate-spin" />
+              </div>
+            )}
+
+            {!audioLoading && !audioTranscript && (
+              <div className="flex flex-col items-center justify-center h-40 text-gray-600 rounded-xl border border-dashed border-white/[0.06]">
+                <Volume2 size={24} className="mb-2 opacity-30" />
+                <p className="text-xs">Transcript + translation will appear here</p>
+              </div>
+            )}
+
+            {audioTranscript && (
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Transcript</p>
+                    <button onClick={() => handleAudioCopy('transcript')} className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-brand-400">
+                      {audioCopied === 'transcript' ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                    </button>
+                  </div>
+                  <div className="px-3 py-2.5 rounded-lg bg-black/30 border border-white/[0.05] text-sm text-white whitespace-pre-wrap max-h-48 overflow-y-auto">
+                    {audioTranscript}
+                  </div>
+                </div>
+
+                {audioTranslated !== null && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-[11px] font-semibold text-brand-300 uppercase tracking-wider">Translated → {audioTarget}</p>
+                      <button onClick={() => handleAudioCopy('translated')} className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-brand-400">
+                        {audioCopied === 'translated' ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                      </button>
+                    </div>
+                    <div className="px-3 py-2.5 rounded-lg bg-brand-500/5 border border-brand-500/20 text-sm text-white whitespace-pre-wrap max-h-48 overflow-y-auto">
+                      {audioTranslated}
+                    </div>
+                  </div>
+                )}
+
+                {audioSegments.length > 0 && (
+                  <details>
+                    <summary className="text-[11px] text-gray-500 cursor-pointer hover:text-gray-300">Show timestamps ({audioSegments.length} segments)</summary>
+                    <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                      {audioSegments.map((s, i) => (
+                        <div key={i} className="flex gap-2 text-[11px]">
+                          <span className="text-gray-500 font-mono w-20 flex-shrink-0">
+                            {s.start != null ? `${s.start.toFixed(1)}s` : '—'}
+                          </span>
+                          <span className="text-gray-300">{s.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

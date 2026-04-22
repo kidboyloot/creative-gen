@@ -161,6 +161,88 @@ async def _download_file(url: str, dest: str):
             f.write(r.content)
 
 
+@router.post("/audio")
+async def transcribe_and_translate_audio(
+    file: UploadFile = File(...),
+    target: str = "en",
+):
+    """Upload audio → transcribe with fal Whisper → optionally translate.
+
+    - `target`: language code to translate the transcript into. Pass "none" or
+      the same language as the source to skip translation and just return the
+      transcription.
+
+    Accepts common audio/video containers (mp3, wav, m4a, webm, mp4, ogg).
+    fal_client handles the upload + model invocation; we fall back to a
+    file-URL upload when the model requires it.
+    """
+    import fal_client
+
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() or "mp3"
+    if ext not in ("mp3", "wav", "m4a", "aac", "ogg", "webm", "mp4", "mov", "flac"):
+        raise HTTPException(400, f"Unsupported audio format: {ext}")
+
+    file_id = str(uuid.uuid4())
+    audio_path = os.path.join(UPLOAD_DIR, f"audio_{file_id}.{ext}")
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+    with open(audio_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    try:
+        # fal wisdom/whisper expects a public URL, so upload and then call.
+        hosted_url = await asyncio.to_thread(fal_client.upload_file, audio_path)
+        result = await asyncio.to_thread(
+            fal_client.run,
+            "fal-ai/whisper",
+            arguments={
+                "audio_url": hosted_url,
+                # Let Whisper auto-detect the spoken language — we only force
+                # the output language on the translation step below.
+                "task": "transcribe",
+                "chunk_level": "segment",
+            },
+        )
+    except Exception as e:
+        raise HTTPException(500, f"Transcription failed: {e}")
+    finally:
+        try:
+            os.remove(audio_path)
+        except Exception:
+            pass
+
+    transcript = (result or {}).get("text", "").strip()
+    detected_lang = (result or {}).get("language") or "auto"
+    chunks = (result or {}).get("chunks") or []
+
+    translated = None
+    if transcript and target and target.lower() not in ("none", "auto", detected_lang or ""):
+        try:
+            t = await _translate_text(transcript, "auto", target)
+            translated = t["translated"]
+        except Exception as e:
+            # Transcription still useful even if translation fails
+            translated = None
+            print(f"[translate/audio] translation failed: {e}")
+
+    return {
+        "text": transcript,
+        "detected_language": detected_lang,
+        "target_language": target,
+        "translated": translated,
+        "chars": len(transcript),
+        "segments": [
+            {
+                "start": c.get("timestamp", [None, None])[0] if isinstance(c.get("timestamp"), list) else None,
+                "end": c.get("timestamp", [None, None])[1] if isinstance(c.get("timestamp"), list) else None,
+                "text": (c.get("text") or "").strip(),
+            }
+            for c in chunks
+        ],
+    }
+
+
 @router.post("/extract-text")
 async def extract_text_from_image(
     file: UploadFile = File(...),
