@@ -49,15 +49,25 @@ if ! command -v caddy >/dev/null 2>&1; then
 fi
 
 log "Service user + code checkout"
-id "$SVC_USER" >/dev/null 2>&1 || useradd --system --home "$REPO_DIR" --shell /usr/sbin/nologin "$SVC_USER"
+id "$SVC_USER" >/dev/null 2>&1 || useradd --system --home-dir "$REPO_DIR" --shell /bin/bash "$SVC_USER"
 
+# Ensure parent of $REPO_DIR exists and is writable by root for first-time clone.
+install -d -o root -g root "$(dirname "$REPO_DIR")"
+
+# First-time clone runs as root into an empty target; subsequent updates run as
+# the service user so git doesn't bail with "dubious ownership" after the
+# chown below.
 if [[ ! -d "$REPO_DIR/.git" ]]; then
 	git clone "$REPO_URL" "$REPO_DIR"
+	chown -R "$SVC_USER:$SVC_USER" "$REPO_DIR"
 else
-	git -C "$REPO_DIR" fetch --all
-	git -C "$REPO_DIR" reset --hard origin/main
+	# Handle the case where a previous run chown'd the tree to $SVC_USER
+	# — run git as that user so it trusts the repo, and make sure the
+	# bootstrap checkout isn't still partially root-owned.
+	chown -R "$SVC_USER:$SVC_USER" "$REPO_DIR"
+	sudo -u "$SVC_USER" git -C "$REPO_DIR" fetch --all
+	sudo -u "$SVC_USER" git -C "$REPO_DIR" reset --hard origin/main
 fi
-chown -R "$SVC_USER:$SVC_USER" "$REPO_DIR"
 
 log "Backend venv + deps"
 sudo -u "$SVC_USER" bash <<EOF
