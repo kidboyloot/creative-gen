@@ -62,25 +62,51 @@ async def inpaint(
     with open(mask_path, "wb") as f:
         f.write(await mask.read())
 
-    image_uri = _image_to_data_uri(img_path)
-    mask_uri = _image_to_data_uri(mask_path)
+    # Data URIs work for small/medium images but fal's inpainting endpoints
+    # choke above ~2MB base64. Upload through their client instead so we get
+    # a public URL back — same path everyone else on fal uses.
+    try:
+        image_url_public = await asyncio.to_thread(fal_sdk.upload_file, img_path)
+        mask_url_public = await asyncio.to_thread(fal_sdk.upload_file, mask_path)
+    except Exception as e:
+        raise HTTPException(500, f"Could not upload to fal: {e}")
+
+    # fal-ai/flux-lora/inpainting is the currently-maintained Flux inpainting
+    # endpoint — `fal-ai/flux/dev/inpainting` was the legacy path and is
+    # flaky / removed. Keep the model pinned via env var so we can swap
+    # without a code change if fal renames things again.
+    endpoint = os.getenv("FAL_INPAINT_MODEL", "fal-ai/flux-lora/inpainting")
 
     try:
         result = await asyncio.to_thread(
             fal_sdk.run,
-            "fal-ai/flux/dev/inpainting",
+            endpoint,
             arguments={
-                "image_url": image_uri,
-                "mask_url": mask_uri,
-                "prompt": prompt or "seamless natural fill",
+                "image_url": image_url_public,
+                "mask_url": mask_url_public,
+                "prompt": prompt or "seamless natural fill, photorealistic",
                 "num_images": 1,
-                "strength": 0.85,
+                "num_inference_steps": 28,
+                "guidance_scale": 3.5,
             },
         )
-        img_url = result["images"][0]["url"]
+    except Exception as e:
+        # Bubble up the actual fal error so the user sees it instead of a
+        # generic 500. Almost all fal exceptions include the response body.
+        msg = str(e)
+        raise HTTPException(500, f"Inpainting failed ({endpoint}): {msg[:400]}")
+
+    images = (result or {}).get("images") or []
+    if not images:
+        raise HTTPException(500, f"Inpainting returned no images. Raw: {str(result)[:300]}")
+    img_url = images[0].get("url") if isinstance(images[0], dict) else None
+    if not img_url:
+        raise HTTPException(500, f"Inpainting response missing url. Raw: {str(result)[:300]}")
+
+    try:
         await _download_file(img_url, out_path)
     except Exception as e:
-        raise HTTPException(500, f"Inpainting failed: {e}")
+        raise HTTPException(500, f"Failed to fetch inpainted image: {e}")
 
     return {
         "id": edit_id,
