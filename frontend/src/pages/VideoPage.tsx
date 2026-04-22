@@ -5,6 +5,7 @@ import { Video, Loader2, Play, Volume2, VolumeX } from 'lucide-react'
 import clsx from 'clsx'
 import UploadZone from '../components/UploadZone'
 import ModelSelect from '../components/ModelSelect'
+import Dropdown from '../components/ui/Dropdown'
 import { useVideoStore } from '../store/videoStore'
 import { useVideoStatus, VideoAsset } from '../hooks/useVideoStatus'
 
@@ -150,17 +151,15 @@ export default function VideoPage() {
           {/* Duration */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Duration</label>
-            <select
+            <Dropdown
               value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 transition-colors appearance-none cursor-pointer"
-            >
-              {DURATIONS.map((d) => (
-                <option key={d} value={d} className="bg-gray-900">
-                  {d === 'auto' ? 'Auto (model decides)' : `${d} seconds`}
-                </option>
-              ))}
-            </select>
+              onChange={setDuration}
+              searchable={false}
+              options={DURATIONS.map((d) => ({
+                value: d,
+                label: d === 'auto' ? 'Auto (model decides)' : `${d} seconds`,
+              }))}
+            />
           </div>
 
           {/* Audio toggle */}

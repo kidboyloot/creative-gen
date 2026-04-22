@@ -5,6 +5,7 @@ import {
   Target, DollarSign, BarChart3, ShoppingCart, MousePointer, Users
 } from 'lucide-react'
 import clsx from 'clsx'
+import Dropdown from '../components/ui/Dropdown'
 
 const COUNTRIES = [
   { code: 'ALL', label: 'All Countries' },
@@ -281,10 +282,12 @@ export default function AdLibraryPage() {
             <label className="block text-[10px] text-gray-600 uppercase tracking-wider mb-1">Country</label>
             <div className="flex items-center gap-1.5">
               <Globe size={12} className="text-gray-500" />
-              <select value={country} onChange={e => setCountry(e.target.value)}
-                className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-500/50">
-                {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
-              </select>
+              <Dropdown
+                className="min-w-[160px]"
+                value={country}
+                onChange={setCountry}
+                options={COUNTRIES.map((c) => ({ value: c.code, label: c.label, hint: c.code }))}
+              />
             </div>
           </div>
 
@@ -305,24 +308,34 @@ export default function AdLibraryPage() {
           {/* Status */}
           <div>
             <label className="block text-[10px] text-gray-600 uppercase tracking-wider mb-1">Status</label>
-            <select value={adStatus} onChange={e => setAdStatus(e.target.value)}
-              className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-500/50">
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="all">All</option>
-            </select>
+            <Dropdown
+              className="min-w-[130px]"
+              value={adStatus}
+              onChange={setAdStatus}
+              searchable={false}
+              options={[
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'all', label: 'All' },
+              ]}
+            />
           </div>
 
           {/* Media type */}
           <div>
             <label className="block text-[10px] text-gray-600 uppercase tracking-wider mb-1">Media</label>
-            <select value={mediaType} onChange={e => setMediaType(e.target.value)}
-              className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-500/50">
-              <option value="all">All Types</option>
-              <option value="image">Images</option>
-              <option value="video">Videos</option>
-              <option value="meme">Memes</option>
-            </select>
+            <Dropdown
+              className="min-w-[140px]"
+              value={mediaType}
+              onChange={setMediaType}
+              searchable={false}
+              options={[
+                { value: 'all', label: 'All Types' },
+                { value: 'image', label: 'Images' },
+                { value: 'video', label: 'Videos' },
+                { value: 'meme', label: 'Memes' },
+              ]}
+            />
           </div>
 
           {/* Date range */}

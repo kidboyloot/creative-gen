@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../store/authStore'
+import Dropdown from '../components/ui/Dropdown'
 
 // ── Types ──
 interface MockAd {
@@ -314,12 +315,22 @@ export default function AdGeniusPage() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Globe size={12} className="text-gray-500" />
-                  <select value={liveCountry} onChange={e => setLiveCountry(e.target.value)}
-                    className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-2 py-2.5 text-xs text-white focus:outline-none">
-                    <option value="US">US</option><option value="PT">PT</option><option value="BR">BR</option>
-                    <option value="GB">UK</option><option value="ES">ES</option><option value="FR">FR</option>
-                    <option value="DE">DE</option><option value="IT">IT</option>
-                  </select>
+                  <Dropdown
+                    className="w-24"
+                    value={liveCountry}
+                    onChange={setLiveCountry}
+                    searchable={false}
+                    options={[
+                      { value: 'US', label: 'US' },
+                      { value: 'PT', label: 'PT' },
+                      { value: 'BR', label: 'BR' },
+                      { value: 'GB', label: 'UK' },
+                      { value: 'ES', label: 'ES' },
+                      { value: 'FR', label: 'FR' },
+                      { value: 'DE', label: 'DE' },
+                      { value: 'IT', label: 'IT' },
+                    ]}
+                  />
                 </div>
                 <button onClick={searchLiveAds} disabled={!liveQuery.trim() || liveLoading}
                   className={clsx('flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-xs transition-colors',
@@ -431,10 +442,12 @@ export default function AdGeniusPage() {
             </div>
 
             {/* Niche */}
-            <select value={nicheFilter} onChange={e => setNicheFilter(e.target.value)}
-              className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-[11px] text-gray-300 focus:outline-none capitalize">
-              {NICHES.map(n => <option key={n} value={n}>{n === 'all' ? 'All Niches' : n}</option>)}
-            </select>
+            <Dropdown
+              className="min-w-[140px]"
+              value={nicheFilter}
+              onChange={setNicheFilter}
+              options={NICHES.map((n) => ({ value: n, label: n === 'all' ? 'All Niches' : n }))}
+            />
 
             {/* Favorites */}
             <button onClick={() => setShowFavOnly(v => !v)}
@@ -444,10 +457,13 @@ export default function AdGeniusPage() {
             </button>
 
             {/* Sort */}
-            <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-              className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-[11px] text-gray-300 focus:outline-none ml-auto">
-              {SORT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <Dropdown
+              className="min-w-[140px] ml-auto"
+              value={sortBy}
+              onChange={setSortBy}
+              searchable={false}
+              options={SORT_OPTIONS.map((s) => ({ value: s, label: s }))}
+            />
           </div>
 
           {/* Brand pills */}

@@ -4,6 +4,7 @@ import axios from 'axios'
 import { ArrowLeft, Loader2, Sparkles, Bookmark, Plus, Trash2, BookmarkPlus } from 'lucide-react'
 import clsx from 'clsx'
 import ModelSelect from '../ModelSelect'
+import Dropdown from '../ui/Dropdown'
 import { useMultiProductStore } from '../../store/multiProductStore'
 import { startImport } from '../../api/shopify'
 import { useAuthStore } from '../../store/authStore'
@@ -169,28 +170,19 @@ export default function GalleryTemplateStep() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] uppercase tracking-wider text-gray-500 font-medium block mb-1">Model</label>
-                    <select
+                    <Dropdown
                       value={slot.model}
-                      onChange={(e) => updateSlot(idx, { model: e.target.value })}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white outline-none"
-                    >
-                      {models.map((m) => (
-                        <option key={m.id} value={m.id}>{m.label}</option>
-                      ))}
-                      {models.length === 0 && <option value="flux-dev">flux-dev</option>}
-                    </select>
+                      onChange={(v) => updateSlot(idx, { model: v })}
+                      options={(models.length > 0 ? models : [{ id: 'flux-dev', label: 'flux-dev' }]).map((m) => ({ value: m.id, label: m.label }))}
+                    />
                   </div>
                   <div>
                     <label className="text-[10px] uppercase tracking-wider text-gray-500 font-medium block mb-1">Style</label>
-                    <select
+                    <Dropdown
                       value={slot.style}
-                      onChange={(e) => updateSlot(idx, { style: e.target.value })}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-white outline-none"
-                    >
-                      {STYLES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
+                      onChange={(v) => updateSlot(idx, { style: v })}
+                      options={STYLES.map((s) => ({ value: s, label: s }))}
+                    />
                   </div>
                 </div>
                 <div className="flex items-center justify-end gap-2">

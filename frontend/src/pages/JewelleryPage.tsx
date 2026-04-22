@@ -6,6 +6,7 @@ import {
   Layers, CreditCard, Camera
 } from 'lucide-react'
 import clsx from 'clsx'
+import Dropdown from '../components/ui/Dropdown'
 import { useAuthStore } from '../store/authStore'
 
 interface ModelOption { id: string; label: string; description: string }
@@ -366,10 +367,13 @@ export default function JewelleryPage() {
                   ))}
                 </div>
               </div>
-              <select value={count} onChange={e => setCount(Number(e.target.value))}
-                className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-sm text-white w-16">
-                {[2, 4, 6, 8].map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
+              <Dropdown
+                className="w-20"
+                value={String(count)}
+                onChange={(v) => setCount(Number(v))}
+                searchable={false}
+                options={[2, 4, 6, 8].map((n) => ({ value: String(n), label: String(n) }))}
+              />
             </div>
 
             <button onClick={handleGenerateAds} disabled={!file || loading}
@@ -430,10 +434,13 @@ export default function JewelleryPage() {
                   ))}
                 </div>
               </div>
-              <select value={count} onChange={e => setCount(Number(e.target.value))}
-                className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-sm text-white w-16">
-                {[2, 4, 6, 8].map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
+              <Dropdown
+                className="w-20"
+                value={String(count)}
+                onChange={(v) => setCount(Number(v))}
+                searchable={false}
+                options={[2, 4, 6, 8].map((n) => ({ value: String(n), label: String(n) }))}
+              />
             </div>
 
             <button onClick={handleGenerateScenario} disabled={!file || loading}

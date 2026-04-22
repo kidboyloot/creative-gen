@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../store/authStore'
+import Dropdown from '../components/ui/Dropdown'
 
 interface Presets {
   ages: string[]
@@ -213,17 +214,21 @@ export default function AvatarPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Age</label>
-                  <select value={age} onChange={e => setAge(e.target.value)}
-                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50">
-                    {presets?.ages.map(a => <option key={a} value={a}>{a}</option>)}
-                  </select>
+                  <Dropdown
+                    value={age}
+                    onChange={setAge}
+                    searchable={false}
+                    options={(presets?.ages || []).map((a) => ({ value: a, label: a }))}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Gender</label>
-                  <select value={gender} onChange={e => setGender(e.target.value)}
-                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500/50">
-                    {presets?.genders.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
+                  <Dropdown
+                    value={gender}
+                    onChange={setGender}
+                    searchable={false}
+                    options={(presets?.genders || []).map((g) => ({ value: g, label: g }))}
+                  />
                 </div>
               </div>
             </>

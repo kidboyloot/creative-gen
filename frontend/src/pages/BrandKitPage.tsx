@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Palette, Upload, RotateCcw, Save, Check } from 'lucide-react'
 import { useBrandStore } from '../store/brandStore'
+import Dropdown from '../components/ui/Dropdown'
 
 const FONT_OPTIONS = [
   'Inter', 'Poppins', 'Roboto', 'Montserrat', 'Playfair Display',
@@ -143,24 +144,20 @@ export default function BrandKitPage() {
         {/* Fonts */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">Heading Font</label>
-          <select
+          <Dropdown
             value={brand.fonts.heading}
-            onChange={e => brand.setFonts({ ...brand.fonts, heading: e.target.value })}
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50"
-          >
-            {FONT_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
-          </select>
+            onChange={(v) => brand.setFonts({ ...brand.fonts, heading: v })}
+            options={FONT_OPTIONS.map((f) => ({ value: f, label: f }))}
+          />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">Body Font</label>
-          <select
+          <Dropdown
             value={brand.fonts.body}
-            onChange={e => brand.setFonts({ ...brand.fonts, body: e.target.value })}
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50"
-          >
-            {FONT_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
-          </select>
+            onChange={(v) => brand.setFonts({ ...brand.fonts, body: v })}
+            options={FONT_OPTIONS.map((f) => ({ value: f, label: f }))}
+          />
         </div>
       </div>
 

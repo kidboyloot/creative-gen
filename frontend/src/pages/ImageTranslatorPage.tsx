@@ -262,10 +262,12 @@ export default function ImageTranslatorPage() {
         <div className="space-y-4">
           {/* Language bar */}
           <div className="flex items-center gap-3">
-            <select value={sourceLang} onChange={e => setSourceLang(e.target.value)}
-              className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 flex-1">
-              {sourceLangs.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
-            </select>
+            <Dropdown
+              className="flex-1"
+              value={sourceLang}
+              onChange={setSourceLang}
+              options={sourceLangs.map((l) => ({ value: l.code, label: l.name, hint: l.code }))}
+            />
 
             <button onClick={swapLangs} disabled={sourceLang === 'auto'}
               className={clsx('p-2.5 rounded-xl border transition-colors',
@@ -273,10 +275,12 @@ export default function ImageTranslatorPage() {
               <ArrowRightLeft size={16} />
             </button>
 
-            <select value={targetLang} onChange={e => setTargetLang(e.target.value)}
-              className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 flex-1">
-              {targetLangs.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
-            </select>
+            <Dropdown
+              className="flex-1"
+              value={targetLang}
+              onChange={setTargetLang}
+              options={targetLangs.map((l) => ({ value: l.code, label: l.name, hint: l.code }))}
+            />
           </div>
 
           {/* Translation panels */}
@@ -348,15 +352,19 @@ export default function ImageTranslatorPage() {
         <div className="space-y-5">
           {/* Language bar */}
           <div className="flex items-center gap-3">
-            <select value={sourceLang} onChange={e => setSourceLang(e.target.value)}
-              className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 flex-1">
-              {sourceLangs.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
-            </select>
+            <Dropdown
+              className="flex-1"
+              value={sourceLang}
+              onChange={setSourceLang}
+              options={sourceLangs.map((l) => ({ value: l.code, label: l.name, hint: l.code }))}
+            />
             <ArrowRightLeft size={16} className="text-gray-600" />
-            <select value={targetLang} onChange={e => setTargetLang(e.target.value)}
-              className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50 flex-1">
-              {targetLangs.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
-            </select>
+            <Dropdown
+              className="flex-1"
+              value={targetLang}
+              onChange={setTargetLang}
+              options={targetLangs.map((l) => ({ value: l.code, label: l.name, hint: l.code }))}
+            />
           </div>
 
           {/* Bulk input */}
@@ -495,10 +503,12 @@ export default function ImageTranslatorPage() {
 
                 {/* Language + Extract button */}
                 <div className="flex gap-2">
-                  <select value={ocrLang} onChange={e => setOcrLang(e.target.value)}
-                    className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500/50">
-                    {OCR_LANGS.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
-                  </select>
+                  <Dropdown
+                    className="w-44"
+                    value={ocrLang}
+                    onChange={setOcrLang}
+                    options={OCR_LANGS.map((l) => ({ value: l.code, label: l.name, hint: l.code }))}
+                  />
                   <button onClick={handleExtractText} disabled={ocrLoading}
                     className={clsx('flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all',
                       !ocrLoading ? 'bg-brand-600 hover:bg-brand-700 text-white' : 'bg-white/[0.04] text-gray-500 cursor-not-allowed')}>
