@@ -1,7 +1,6 @@
 # Replace {$SITE_ADDRESS} with your domain or :80 for IP-only HTTP.
 # Set the env var before starting Caddy (the deploy script does this).
 {$SITE_ADDRESS} {
-	# Static frontend build
 	root * /opt/creative-gen/frontend/dist
 	encode zstd gzip
 
@@ -9,8 +8,17 @@
 	@backend path /auth* /shopify* /upload* /generate* /history* /download* /files* /spaces* /video* /tools* /voice* /adgenius* /chat* /image-edit* /avatar* /translate* /profile*
 	reverse_proxy @backend 127.0.0.1:8000
 
-	# /welcome/ serves the static landing directly (Caddy handles it via file_server below)
-	# SPA fallback: anything that isn't a real file goes to index.html so React Router works.
-	try_files {path} /index.html
-	file_server
+	# Welcome landing is a plain static folder (index.html + assets/). Serve it
+	# verbatim without the SPA fallback — otherwise requests to /welcome/ fall
+	# through to the React app's index.html and the page renders black.
+	handle /welcome/* {
+		file_server
+	}
+
+	# SPA fallback: any path that isn't an actual file goes to the React app's
+	# index.html so React Router can resolve the route.
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
 }
