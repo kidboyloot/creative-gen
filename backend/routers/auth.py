@@ -168,6 +168,9 @@ async def register(req: RegisterRequest, session: Session = Depends(get_session)
         credits=WELCOME_CREDITS,
     )
     session.add(user)
+    # Flush so the user row hits the DB before we insert a CreditTransaction
+    # that FK-references it. SQLite tolerates the ordering, Postgres rejects it.
+    session.flush()
 
     # Welcome credit transaction
     tx = CreditTransaction(
