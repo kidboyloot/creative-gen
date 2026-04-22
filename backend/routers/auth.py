@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
@@ -8,7 +9,7 @@ from jose import jwt, JWTError
 from passlib.context import CryptContext
 
 from database import get_session
-from models import User, CreditTransaction
+from models import User, CreditTransaction, Team, TeamMember
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -111,8 +112,59 @@ def require_user(
     return user
 
 
+def _user_team(user: User, session: Session) -> Optional[Team]:
+    """Return the team the user belongs to, or None if solo."""
+    membership = session.exec(
+        select(TeamMember).where(TeamMember.user_id == user.id)
+    ).first()
+    if not membership:
+        return None
+    return session.get(Team, membership.team_id)
+
+
+def effective_credits(user: User, session: Session) -> int:
+    """Credits available to this user — from their team if any, else their own."""
+    team = _user_team(user, session)
+    return team.credits if team else user.credits
+
+
+def effective_plan(user: User, session: Session) -> str:
+    """Plan in effect for this user — team's plan overrides personal."""
+    team = _user_team(user, session)
+    return team.plan if team else user.plan
+
+
 def spend_credits(user: User, amount: int, description: str, session: Session) -> None:
-    """Deduct credits from user. Raises 403 if insufficient."""
+    """Deduct credits from the team (if any) or the user. Raises 403 if insufficient.
+
+    Concurrency: when a team is used we lock the team row with SELECT FOR UPDATE
+    so two members buying simultaneously can't double-spend the same balance.
+    SQLite (dev) ignores `with_for_update()` silently — fine for single-process dev.
+    """
+    team = _user_team(user, session)
+    if team:
+        # Re-fetch with row lock so concurrent spends serialize.
+        locked = session.exec(
+            select(Team).where(Team.id == team.id).with_for_update()
+        ).first()
+        if not locked or locked.credits < amount:
+            have = locked.credits if locked else 0
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient team credits. Need {amount}, have {have}.",
+            )
+        locked.credits -= amount
+        session.add(locked)
+        tx = CreditTransaction(
+            user_id=user.id,
+            amount=-amount,
+            balance_after=locked.credits,
+            description=f"[team:{locked.name}] {description}",
+        )
+        session.add(tx)
+        session.commit()
+        return
+
     if user.credits < amount:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -132,7 +184,21 @@ def spend_credits(user: User, amount: int, description: str, session: Session) -
 
 
 def add_credits(user: User, amount: int, description: str, session: Session) -> None:
-    """Add credits to user."""
+    """Add credits — to the team if one exists, else to the user."""
+    team = _user_team(user, session)
+    if team:
+        team.credits += amount
+        session.add(team)
+        tx = CreditTransaction(
+            user_id=user.id,
+            amount=amount,
+            balance_after=team.credits,
+            description=f"[team:{team.name}] {description}",
+        )
+        session.add(tx)
+        session.commit()
+        return
+
     user.credits += amount
     session.add(user)
 
@@ -221,13 +287,15 @@ async def login(req: LoginRequest, session: Session = Depends(get_session)):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(user: User = Depends(require_user)):
+async def get_me(user: User = Depends(require_user), session: Session = Depends(get_session)):
+    # Surface team-effective credits and plan so the frontend never shows the
+    # personal balance for someone whose spending really comes from the team pool.
     return UserResponse(
         id=user.id,
         email=user.email,
         name=user.name,
-        credits=user.credits,
-        plan=user.plan,
+        credits=effective_credits(user, session),
+        plan=effective_plan(user, session),
         avatar=user.avatar,
         created_at=user.created_at,
     )
@@ -243,8 +311,8 @@ async def get_credits(user: User = Depends(require_user), session: Session = Dep
     ).all()
 
     return {
-        "credits": user.credits,
-        "plan": user.plan,
+        "credits": effective_credits(user, session),
+        "plan": effective_plan(user, session),
         "transactions": [
             {
                 "id": tx.id,

@@ -37,6 +37,28 @@ class CreditTransaction(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+# ── Teams (shared plan + credits across multiple users) ──
+
+class Team(SQLModel, table=True):
+    id: str = Field(default_factory=gen_uuid, primary_key=True)
+    name: str
+    owner_id: str = Field(foreign_key="user.id", index=True)
+    # The team owns the shared credits + plan. When set, members debit from
+    # here instead of from their own User.credits.
+    credits: int = Field(default=0)
+    plan: str = Field(default="free")
+    invite_code: Optional[str] = Field(default=None, index=True)  # short string others paste to join
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class TeamMember(SQLModel, table=True):
+    id: str = Field(default_factory=gen_uuid, primary_key=True)
+    team_id: str = Field(foreign_key="team.id", index=True)
+    user_id: str = Field(foreign_key="user.id", index=True, unique=True)
+    role: str = Field(default="member")  # "owner" | "member"
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 # ── Projects ──
 
 class Project(SQLModel, table=True):

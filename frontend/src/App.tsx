@@ -28,6 +28,7 @@ import PricingPage from './pages/PricingPage'
 import HomePage from './pages/HomePage'
 import SOPPage from './pages/SOPPage'
 import MultiProductCopyPage from './pages/MultiProductCopyPage'
+import TeamPage from './pages/TeamPage'
 
 // Import authStore so axios interceptors are registered on app load
 import './store/authStore'
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="bg-remover" element={<BgRemoverPage />} />
           <Route path="edit-profile" element={<EditProfilePage />} />
+          <Route path="team" element={<TeamPage />} />
 
           {/* Free tools */}
           <Route path="chat" element={<ChatPage />} />

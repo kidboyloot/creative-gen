@@ -23,6 +23,7 @@ export default defineConfig({
       '/translate': 'http://localhost:8000',
       '/profile': 'http://localhost:8000',
       '/shopify': 'http://localhost:8000',
+      '/teams': 'http://localhost:8000',
     },
   },
 })

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from database import init_db
-from routers import upload, generate, history, download, spaces, video, tools, auth, voice, adgenius, chat, imageedit, avatar, translate, profile, shopify
+from routers import upload, generate, history, download, spaces, video, tools, auth, voice, adgenius, chat, imageedit, avatar, translate, profile, shopify, teams
 
 app = FastAPI(title="Creative Variants Generator", version="1.0.0")
 
@@ -39,6 +39,7 @@ app.include_router(avatar.router)
 app.include_router(translate.router)
 app.include_router(profile.router)
 app.include_router(shopify.router)
+app.include_router(teams.router)
 
 
 @app.get("/")

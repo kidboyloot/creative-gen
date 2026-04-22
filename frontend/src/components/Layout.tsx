@@ -58,6 +58,7 @@ const navSections: NavSection[] = [
       { to: '/brand-kit', label: 'Brand Kit', icon: Palette, minPlan: 'enterprise', badge: 'ENT' },
       { to: '/history', label: 'History', icon: Clock },
       { to: '/projects', label: 'Projects', icon: FolderOpen },
+      { to: '/team', label: 'Team', icon: Users },
     ]
   },
   {
@@ -275,28 +276,26 @@ export default function Layout() {
           <div className="flex items-center gap-2 px-6 py-2.5 border-b border-white/[0.06] bg-surface-600 flex-shrink-0">
             <div className="flex-1" />
 
-            {/* Notification chip */}
-            <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.06] text-gray-400 text-xs transition">
-              <Image size={13} />
-              <span className="px-1.5 bg-brand-500 text-white text-[10px] font-bold rounded-full">2</span>
-            </button>
-
-            {/* Free Trial */}
-            <button className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] text-gray-300 text-xs font-semibold transition">
-              Free Trial
-            </button>
-
-            {/* Upgrade */}
-            <button
-              onClick={() => navigate('/pricing')}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-white text-xs font-semibold transition"
-              style={{
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
-                boxShadow: '0 2px 10px rgba(139, 92, 246, 0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-              }}
-            >
-              <Crown size={13} /> Upgrade Plan
-            </button>
+            {/* Plan button — "My Plan" if already on the highest tier, else "Upgrade Plan" linking to pricing */}
+            {user.plan === 'enterprise' ? (
+              <button
+                onClick={() => navigate('/pricing')}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-semibold transition hover:bg-amber-500/20"
+              >
+                <Crown size={13} /> My Plan
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/pricing')}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-white text-xs font-semibold transition"
+                style={{
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+                  boxShadow: '0 2px 10px rgba(139, 92, 246, 0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                <Crown size={13} /> Upgrade Plan
+              </button>
+            )}
 
             {/* Credit gauge */}
             <div className="relative w-9 h-9 ml-1 cursor-pointer" onClick={() => navigate('/community?tab=profile')}>
