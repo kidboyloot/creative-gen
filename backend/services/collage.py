@@ -16,6 +16,15 @@ LAYOUTS = [
     {"id": "hero_top", "label": "Hero Top", "description": "Hero 65% top + 3 images bottom row", "min_images": 2},
     {"id": "mosaic", "label": "Mosaic", "description": "Asymmetric Pinterest-style layout", "min_images": 3},
     {"id": "filmstrip", "label": "Filmstrip", "description": "Horizontal strip of images side by side", "min_images": 2},
+    # Triptych / split / overlay arrangements — great for product + brand-cell collages
+    {"id": "tri_v", "label": "Triptych Vertical", "description": "3 equal vertical panels", "min_images": 3},
+    {"id": "t_top", "label": "T — 2 top / 1 bottom", "description": "2 cells on top, 1 spanning bottom", "min_images": 3},
+    {"id": "t_bottom", "label": "T — 1 top / 2 bottom", "description": "1 spanning top, 2 cells on bottom (50/50)", "min_images": 3},
+    {"id": "t_left", "label": "T — 1 left / 2 right", "description": "1 spanning left column, 2 stacked right", "min_images": 3},
+    {"id": "t_right", "label": "T — 2 left / 1 right", "description": "2 stacked left, 1 spanning right column", "min_images": 3},
+    {"id": "hero_right", "label": "Hero Right", "description": "Big right + 2 stacked left", "min_images": 3},
+    {"id": "hero_bottom", "label": "Hero Bottom", "description": "2 cells on top + big bottom", "min_images": 3},
+    {"id": "bg_overlay", "label": "Background + Overlays", "description": "Full background with 2 corner overlays", "min_images": 3},
     {"id": "auto", "label": "Auto", "description": "Picks best layout based on format and image count", "min_images": 2},
 ]
 
@@ -152,6 +161,81 @@ def make_collage(
         for i in range(count):
             img = _load_fit(paths[i], cell_w, h)
             canvas.paste(img, (i * (cell_w + g), 0))
+
+    elif layout == "tri_v":
+        # 3 equal vertical strips
+        cw = (w - g * 2) // 3
+        for i in range(3):
+            img = _load_fit(paths[i % n], cw, h)
+            canvas.paste(img, (i * (cw + g), 0))
+
+    elif layout == "t_top":
+        # 2 cells top row + 1 spanning bottom (50/50 height)
+        top_h = (h - g) // 2
+        bot_h = h - top_h - g
+        cw = (w - g) // 2
+        canvas.paste(_load_fit(paths[0], cw, top_h), (0, 0))
+        canvas.paste(_load_fit(paths[1 % n], cw, top_h), (cw + g, 0))
+        canvas.paste(_load_fit(paths[2 % n], w, bot_h), (0, top_h + g))
+
+    elif layout == "t_bottom":
+        # 1 spanning top + 2 cells bottom row (50/50 height)
+        top_h = (h - g) // 2
+        bot_h = h - top_h - g
+        cw = (w - g) // 2
+        canvas.paste(_load_fit(paths[0], w, top_h), (0, 0))
+        canvas.paste(_load_fit(paths[1 % n], cw, bot_h), (0, top_h + g))
+        canvas.paste(_load_fit(paths[2 % n], cw, bot_h), (cw + g, top_h + g))
+
+    elif layout == "t_left":
+        # 1 spanning left column + 2 stacked right (50/50 width)
+        cw = (w - g) // 2
+        rh = (h - g) // 2
+        canvas.paste(_load_fit(paths[0], cw, h), (0, 0))
+        canvas.paste(_load_fit(paths[1 % n], cw, rh), (cw + g, 0))
+        canvas.paste(_load_fit(paths[2 % n], cw, rh), (cw + g, rh + g))
+
+    elif layout == "t_right":
+        # 2 stacked left + 1 spanning right (50/50 width)
+        cw = (w - g) // 2
+        rh = (h - g) // 2
+        canvas.paste(_load_fit(paths[0], cw, rh), (0, 0))
+        canvas.paste(_load_fit(paths[1 % n], cw, rh), (0, rh + g))
+        canvas.paste(_load_fit(paths[2 % n], cw, h), (cw + g, 0))
+
+    elif layout == "hero_right":
+        # Big right (60%) + 2 stacked left (40% width, 50/50 height)
+        right_w = int((w - g) * 0.6)
+        left_w = w - right_w - g
+        rh = (h - g) // 2
+        canvas.paste(_load_fit(paths[0], right_w, h), (left_w + g, 0))
+        canvas.paste(_load_fit(paths[1 % n], left_w, rh), (0, 0))
+        canvas.paste(_load_fit(paths[2 % n], left_w, rh), (0, rh + g))
+
+    elif layout == "hero_bottom":
+        # 2 cells on top + big bottom (40/60 height)
+        bot_h = int((h - g) * 0.6)
+        top_h = h - bot_h - g
+        cw = (w - g) // 2
+        canvas.paste(_load_fit(paths[1 % n], cw, top_h), (0, 0))
+        canvas.paste(_load_fit(paths[2 % n], cw, top_h), (cw + g, 0))
+        canvas.paste(_load_fit(paths[0], w, bot_h), (0, top_h + g))
+
+    elif layout == "bg_overlay":
+        # Full background + small overlay in top-right corner + small overlay in bottom-left
+        bg = _load_fit(paths[0], w, h)
+        canvas.paste(bg, (0, 0))
+        # Top-right overlay (~28% width / ~25% height)
+        ov1_w = int(w * 0.32)
+        ov1_h = int(h * 0.28)
+        margin = int(min(w, h) * 0.06)
+        ov1 = _load_fit(paths[1 % n], ov1_w, ov1_h)
+        canvas.paste(ov1, (w - ov1_w - margin, margin))
+        # Center-bottom overlay (~36% width / ~14% height) for the brand text cell
+        ov2_w = int(w * 0.36)
+        ov2_h = int(h * 0.16)
+        ov2 = _load_fit(paths[2 % n], ov2_w, ov2_h)
+        canvas.paste(ov2, ((w - ov2_w) // 2, h - ov2_h - margin))
 
     canvas.save(output_path, quality=95)
     return output_path

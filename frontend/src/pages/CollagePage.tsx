@@ -21,6 +21,14 @@ const DEFAULT_LAYOUTS: LayoutOption[] = [
   { id: 'hero_top', label: 'Hero Top', description: 'Hero 65% top + 3 images bottom row', min_images: 2 },
   { id: 'mosaic', label: 'Mosaic', description: 'Asymmetric Pinterest-style layout', min_images: 3 },
   { id: 'filmstrip', label: 'Filmstrip', description: 'Horizontal strip of images side by side', min_images: 2 },
+  { id: 'tri_v', label: 'Triptych Vertical', description: '3 equal vertical panels', min_images: 3 },
+  { id: 't_top', label: 'T — 2 top / 1 bottom', description: '2 cells on top, 1 spanning bottom', min_images: 3 },
+  { id: 't_bottom', label: 'T — 1 top / 2 bottom', description: '1 spanning top, 2 cells on bottom', min_images: 3 },
+  { id: 't_left', label: 'T — 1 left / 2 right', description: '1 spanning left, 2 stacked right', min_images: 3 },
+  { id: 't_right', label: 'T — 2 left / 1 right', description: '2 stacked left, 1 spanning right', min_images: 3 },
+  { id: 'hero_right', label: 'Hero Right', description: 'Big right + 2 stacked left', min_images: 3 },
+  { id: 'hero_bottom', label: 'Hero Bottom', description: '2 cells on top + big bottom', min_images: 3 },
+  { id: 'bg_overlay', label: 'Background + Overlays', description: 'Full background with 2 corner overlays', min_images: 3 },
   { id: 'auto', label: 'Auto', description: 'Picks best layout based on format and image count', min_images: 2 },
 ]
 
@@ -104,6 +112,74 @@ const LAYOUT_PREVIEWS: Record<string, React.ReactNode> = {
       <div className="flex-1 bg-current rounded-sm" />
       <div className="flex-1 bg-current rounded-sm" />
       <div className="flex-1 bg-current rounded-sm" />
+    </div>
+  ),
+  tri_v: (
+    <div className="flex gap-0.5 w-full h-full">
+      <div className="flex-1 bg-current rounded-sm" />
+      <div className="flex-1 bg-current rounded-sm" />
+      <div className="flex-1 bg-current rounded-sm" />
+    </div>
+  ),
+  t_top: (
+    <div className="flex flex-col gap-0.5 w-full h-full">
+      <div className="flex-1 flex gap-0.5">
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+      </div>
+      <div className="flex-1 bg-current rounded-sm" />
+    </div>
+  ),
+  t_bottom: (
+    <div className="flex flex-col gap-0.5 w-full h-full">
+      <div className="flex-1 bg-current rounded-sm" />
+      <div className="flex-1 flex gap-0.5">
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+      </div>
+    </div>
+  ),
+  t_left: (
+    <div className="flex gap-0.5 w-full h-full">
+      <div className="flex-1 bg-current rounded-sm" />
+      <div className="flex-1 flex flex-col gap-0.5">
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+      </div>
+    </div>
+  ),
+  t_right: (
+    <div className="flex gap-0.5 w-full h-full">
+      <div className="flex-1 flex flex-col gap-0.5">
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+      </div>
+      <div className="flex-1 bg-current rounded-sm" />
+    </div>
+  ),
+  hero_right: (
+    <div className="flex gap-0.5 w-full h-full">
+      <div className="flex-[2] flex flex-col gap-0.5">
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+      </div>
+      <div className="flex-[3] bg-current rounded-sm" />
+    </div>
+  ),
+  hero_bottom: (
+    <div className="flex flex-col gap-0.5 w-full h-full">
+      <div className="flex-[2] flex gap-0.5">
+        <div className="flex-1 bg-current rounded-sm" />
+        <div className="flex-1 bg-current rounded-sm" />
+      </div>
+      <div className="flex-[3] bg-current rounded-sm" />
+    </div>
+  ),
+  bg_overlay: (
+    <div className="relative w-full h-full">
+      <div className="absolute inset-0 bg-current rounded-sm" />
+      <div className="absolute top-1 right-1 w-1/3 h-1/4 bg-current rounded-sm opacity-60" />
+      <div className="absolute bottom-1 left-1/3 w-1/3 h-1/6 bg-current rounded-sm opacity-60" />
     </div>
   ),
   auto: (
