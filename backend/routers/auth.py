@@ -9,7 +9,7 @@ from jose import jwt, JWTError
 from passlib.context import CryptContext
 
 from database import get_session
-from models import User, CreditTransaction, Team, TeamMember
+from models import User, CreditTransaction, Team, TeamMember, PasswordResetToken
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -46,6 +46,15 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 
 class TokenResponse(BaseModel):
@@ -335,3 +344,98 @@ async def add_credits_endpoint(
     """Add credits (simulates a purchase — in production, integrate Stripe here)."""
     add_credits(user, amount, f"Purchased {amount} credits", session)
     return {"credits": user.credits, "added": amount}
+
+
+# ── Password reset ──
+
+import secrets as _secrets
+from datetime import datetime as _dt, timedelta as _td
+
+
+PASSWORD_RESET_TTL_MINUTES = 60
+# Where the user will open the reset page — set by frontend origin. For now
+# assume same origin as the API; frontend uses the relative /reset-password.
+APP_PUBLIC_URL = os.getenv("APP_PUBLIC_URL", "https://creativegen.online").rstrip("/")
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    req: ForgotPasswordRequest,
+    session: Session = Depends(get_session),
+):
+    """Start a password-reset flow.
+
+    Looks up the user and, if found, generates a one-time token valid for 1h.
+    Because we have no SMTP configured yet, the endpoint returns the reset URL
+    directly so it can be copy-pasted to the user. When email is wired up,
+    this payload should be hidden and the link sent via mail instead.
+
+    Always returns 200 regardless of whether the email exists — prevents
+    enumeration.
+    """
+    email = (req.email or "").lower().strip()
+    user = session.exec(select(User).where(User.email == email)).first()
+    if not user:
+        return {"ok": True, "message": "If that email is registered, a reset link was issued."}
+
+    # Invalidate previous outstanding tokens for this user so only the newest link works
+    old = session.exec(
+        select(PasswordResetToken)
+        .where(PasswordResetToken.user_id == user.id)
+        .where(PasswordResetToken.used_at.is_(None))
+    ).all()
+    for t in old:
+        t.used_at = _dt.utcnow()
+        session.add(t)
+
+    token = _secrets.token_urlsafe(32)
+    row = PasswordResetToken(
+        user_id=user.id,
+        token=token,
+        expires_at=_dt.utcnow() + _td(minutes=PASSWORD_RESET_TTL_MINUTES),
+    )
+    session.add(row)
+    session.commit()
+
+    reset_url = f"{APP_PUBLIC_URL}/reset-password?token={token}"
+    # TODO when SMTP is configured, send this link via email and drop the
+    # reset_url + token from the response body.
+    return {
+        "ok": True,
+        "message": "Reset link issued.",
+        "reset_url": reset_url,
+        "expires_in_minutes": PASSWORD_RESET_TTL_MINUTES,
+    }
+
+
+@router.post("/reset-password")
+async def reset_password(
+    req: ResetPasswordRequest,
+    session: Session = Depends(get_session),
+):
+    if not req.token or not req.new_password:
+        raise HTTPException(400, "Token and new_password are required.")
+    if len(req.new_password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters.")
+
+    row = session.exec(
+        select(PasswordResetToken).where(PasswordResetToken.token == req.token)
+    ).first()
+    if not row:
+        raise HTTPException(400, "Invalid or expired reset link.")
+    if row.used_at is not None:
+        raise HTTPException(400, "This reset link has already been used.")
+    if row.expires_at < _dt.utcnow():
+        raise HTTPException(400, "This reset link has expired. Request a new one.")
+
+    user = session.get(User, row.user_id)
+    if not user:
+        raise HTTPException(400, "User no longer exists.")
+
+    user.hashed_password = hash_password(req.new_password)
+    session.add(user)
+
+    row.used_at = _dt.utcnow()
+    session.add(row)
+    session.commit()
+    return {"ok": True, "message": "Password updated. You can now log in."}

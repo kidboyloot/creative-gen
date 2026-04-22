@@ -37,6 +37,15 @@ class CreditTransaction(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class PasswordResetToken(SQLModel, table=True):
+    id: str = Field(default_factory=gen_uuid, primary_key=True)
+    user_id: str = Field(foreign_key="user.id", index=True)
+    token: str = Field(index=True, unique=True)  # random opaque string sent to the user
+    expires_at: datetime
+    used_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 # ── Teams (shared plan + credits across multiple users) ──
 
 class Team(SQLModel, table=True):

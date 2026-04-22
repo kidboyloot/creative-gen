@@ -811,6 +811,144 @@ export default function CollagePage() {
                       {ordered.slice(0, 5).map((_, i) => <Cell key={i} idx={i} className="flex-1" />)}
                     </div>
                   )
+                case 'tri_v':
+                  return (
+                    <div className={clsx('flex w-full', aspectClass)} style={{ gap: gapPx }}>
+                      <Cell idx={0} className="flex-1" />
+                      <Cell idx={1} className="flex-1" />
+                      <Cell idx={2} className="flex-1" />
+                    </div>
+                  )
+                case 't_top':
+                  return (
+                    <div className={clsx('flex flex-col w-full', aspectClass)} style={{ gap: gapPx }}>
+                      <div className="flex flex-1" style={{ gap: gapPx }}>
+                        <Cell idx={0} className="flex-1" />
+                        <Cell idx={1} className="flex-1" />
+                      </div>
+                      <Cell idx={2} className="flex-1" />
+                    </div>
+                  )
+                case 't_bottom':
+                  return (
+                    <div className={clsx('flex flex-col w-full', aspectClass)} style={{ gap: gapPx }}>
+                      <Cell idx={0} className="flex-1" />
+                      <div className="flex flex-1" style={{ gap: gapPx }}>
+                        <Cell idx={1} className="flex-1" />
+                        <Cell idx={2} className="flex-1" />
+                      </div>
+                    </div>
+                  )
+                case 't_left':
+                  return (
+                    <div className={clsx('flex w-full', aspectClass)} style={{ gap: gapPx }}>
+                      <Cell idx={0} className="flex-1" />
+                      <div className="flex flex-col flex-1" style={{ gap: gapPx }}>
+                        <Cell idx={1} className="flex-1" />
+                        <Cell idx={2} className="flex-1" />
+                      </div>
+                    </div>
+                  )
+                case 't_right':
+                  return (
+                    <div className={clsx('flex w-full', aspectClass)} style={{ gap: gapPx }}>
+                      <div className="flex flex-col flex-1" style={{ gap: gapPx }}>
+                        <Cell idx={0} className="flex-1" />
+                        <Cell idx={1} className="flex-1" />
+                      </div>
+                      <Cell idx={2} className="flex-1" />
+                    </div>
+                  )
+                case 'hero_right':
+                  return (
+                    <div className={clsx('flex w-full', aspectClass)} style={{ gap: gapPx }}>
+                      <div className="flex flex-col flex-[2]" style={{ gap: gapPx }}>
+                        <Cell idx={1} className="flex-1" />
+                        <Cell idx={2} className="flex-1" />
+                      </div>
+                      <Cell idx={0} className="flex-[3]" />
+                    </div>
+                  )
+                case 'hero_bottom':
+                  return (
+                    <div className={clsx('flex flex-col w-full', aspectClass)} style={{ gap: gapPx }}>
+                      <div className="flex flex-[2]" style={{ gap: gapPx }}>
+                        <Cell idx={1} className="flex-1" />
+                        <Cell idx={2} className="flex-1" />
+                      </div>
+                      <Cell idx={0} className="flex-[3]" />
+                    </div>
+                  )
+                case 'bg_overlay':
+                  return (
+                    <div className={clsx('relative w-full', aspectClass)}>
+                      <Cell idx={0} className="absolute inset-0 w-full h-full" />
+                      <div className="absolute top-[6%] right-[6%] w-[32%] h-[28%]"><Cell idx={1} className="w-full h-full" /></div>
+                      <div className="absolute bottom-[6%] left-1/2 -translate-x-1/2 w-[36%] h-[16%]"><Cell idx={2} className="w-full h-full" /></div>
+                    </div>
+                  )
+                case 'mosaic_6_left':
+                  return (
+                    <div className={clsx('flex flex-col w-full', aspectClass)} style={{ gap: gapPx }}>
+                      <div className="flex flex-1" style={{ gap: gapPx }}>
+                        <Cell idx={0} className="flex-[3]" />
+                        <div className="flex flex-col flex-[2]" style={{ gap: gapPx }}>
+                          <Cell idx={1} className="flex-1" />
+                          <Cell idx={2} className="flex-1" />
+                        </div>
+                      </div>
+                      <div className="flex flex-1" style={{ gap: gapPx }}>
+                        <Cell idx={3} className="flex-1" />
+                        <Cell idx={4} className="flex-1" />
+                        <Cell idx={5} className="flex-1" />
+                      </div>
+                    </div>
+                  )
+                case 'mosaic_6_right':
+                  return (
+                    <div className={clsx('flex w-full', aspectClass)} style={{ gap: gapPx }}>
+                      <div className="flex flex-col flex-1" style={{ gap: gapPx }}>
+                        <Cell idx={1} className="flex-1" />
+                        <Cell idx={2} className="flex-1" />
+                        <Cell idx={3} className="flex-1" />
+                      </div>
+                      <div className="flex flex-col flex-[3]" style={{ gap: gapPx }}>
+                        <Cell idx={0} className="flex-[3]" />
+                        <div className="flex flex-[2]" style={{ gap: gapPx }}>
+                          <Cell idx={4} className="flex-1" />
+                          <Cell idx={5} className="flex-1" />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                case 'quad_3_1':
+                  return (
+                    <div className={clsx('flex w-full', aspectClass)} style={{ gap: gapPx }}>
+                      <div className="flex flex-col flex-1" style={{ gap: gapPx }}>
+                        <Cell idx={1} className="flex-1" />
+                        <Cell idx={2} className="flex-1" />
+                        <Cell idx={3} className="flex-1" />
+                      </div>
+                      <Cell idx={0} className="flex-1" />
+                    </div>
+                  )
+                case 'magazine':
+                  return (
+                    <div className={clsx('flex flex-col w-full', aspectClass)} style={{ gap: gapPx }}>
+                      <div className="flex flex-[3]" style={{ gap: gapPx }}>
+                        <Cell idx={1} className="flex-1" />
+                        <Cell idx={2} className="flex-1" />
+                        <Cell idx={3} className="flex-1" />
+                      </div>
+                      <div className="flex flex-[7]" style={{ gap: gapPx }}>
+                        <div className="flex flex-col flex-1" style={{ gap: gapPx }}>
+                          <Cell idx={4} className="flex-1" />
+                          <Cell idx={5} className="flex-1" />
+                        </div>
+                        <Cell idx={0} className="flex-[2]" />
+                      </div>
+                    </div>
+                  )
                 default:
                   return (
                     <div className={clsx('grid grid-cols-2 gap-2 w-full', aspectClass)}>
