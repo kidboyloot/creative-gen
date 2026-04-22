@@ -6,6 +6,7 @@ import {
   FileText, Download, Upload, Image as ImageIcon, X, Volume2, Type, RefreshCw
 } from 'lucide-react'
 import clsx from 'clsx'
+import Dropdown from '../components/ui/Dropdown'
 
 interface Language {
   code: string
@@ -632,16 +633,15 @@ export default function ImageTranslatorPage() {
 
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Translate to</label>
-              <select
+              <Dropdown
                 value={audioTarget}
-                onChange={(e) => setAudioTarget(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white outline-none focus:border-brand-500/50"
-              >
-                <option value="none">Skip — transcript only</option>
-                {targetLangs.map((l) => (
-                  <option key={l.code} value={l.code}>{l.name}</option>
-                ))}
-              </select>
+                onChange={setAudioTarget}
+                options={[
+                  { value: 'none', label: 'Skip — transcript only', hint: 'Only run Whisper, don\'t translate' },
+                  ...targetLangs.map((l) => ({ value: l.code, label: l.name, hint: l.code })),
+                ]}
+                placeholder="Pick a language"
+              />
             </div>
 
             <button
