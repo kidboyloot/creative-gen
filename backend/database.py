@@ -31,6 +31,8 @@ _COLUMN_ADDITIONS: list[tuple[str, str, str]] = [
     ("shopifyconnection", "client_secret", "VARCHAR"),
     ("shopifyconnection", "access_token_expires_at", "DATETIME"),
     ("generatedasset", "shopify_item_id", "VARCHAR"),
+    ("shopifyimportitem", "source_variants_json", "VARCHAR DEFAULT '[]'"),
+    ("shopifyimportitem", "source_options_json", "VARCHAR DEFAULT '[]'"),
 ]
 
 

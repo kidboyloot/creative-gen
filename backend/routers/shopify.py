@@ -75,6 +75,8 @@ class ImportOptionsProduct(BaseModel):
     currency: str = "USD"
     tags: list[str] = []
     images: list[dict] = []
+    variants: list[dict] = []
+    options: list[dict] = []
 
 
 class ImagePromptSlot(BaseModel):
@@ -309,6 +311,34 @@ async def collection_preview(
             img = p["images"][0].get("src", "")
         variants = p.get("variants") or []
         price = variants[0].get("price") if variants else "0.00"
+        # Normalize variants/options: Admin REST and public products.json have
+        # slightly different shapes but both expose option1/2/3 on variants and
+        # an options[] on the product. Keeping only the fields we can safely
+        # replay via POST /products.json (option values, price, sku, barcode).
+        clean_variants = [
+            {
+                "id": str(v.get("id") or ""),
+                "title": v.get("title") or "",
+                "price": v.get("price") or "0.00",
+                "compare_at_price": v.get("compare_at_price"),
+                "sku": v.get("sku") or "",
+                "barcode": v.get("barcode") or "",
+                "option1": v.get("option1"),
+                "option2": v.get("option2"),
+                "option3": v.get("option3"),
+            }
+            for v in variants
+        ]
+        raw_options = p.get("options") or []
+        clean_options = [
+            {
+                "name": (o.get("name") or "").strip(),
+                "position": o.get("position"),
+                "values": o.get("values") or [],
+            }
+            for o in raw_options
+            if (o.get("name") or "").strip()
+        ]
         preview.append(
             {
                 "id": str(p["id"]),
@@ -321,6 +351,8 @@ async def collection_preview(
                 "description": p.get("body_html", ""),
                 "tags": [t.strip() for t in (p.get("tags") or "").split(",") if t.strip()],
                 "images": [{"id": str(im.get("id")), "src": im.get("src", ""), "alt": im.get("alt", "")} for im in (p.get("images") or [])],
+                "variants": clean_variants,
+                "options": clean_options,
             }
         )
 
@@ -397,6 +429,8 @@ async def start_import(
             source_currency=p.currency,
             source_tags_json=json.dumps(p.tags),
             source_images_json=json.dumps(p.images),
+            source_variants_json=json.dumps(p.variants or []),
+            source_options_json=json.dumps(p.options or []),
         )
         session.add(item)
     session.commit()
@@ -547,6 +581,8 @@ async def push_to_shopify(
         else:
             image_urls = [im.get("src") for im in json.loads(item.source_images_json or "[]") if im.get("src")]
 
+        source_variants = json.loads(item.source_variants_json or "[]")
+        source_options = json.loads(item.source_options_json or "[]")
         try:
             product = await client.create_draft_product(
                 title=title,
@@ -554,6 +590,8 @@ async def push_to_shopify(
                 price=price,
                 tags=tags,
                 image_urls=image_urls,
+                variants=source_variants or None,
+                options=source_options or None,
             )
         except Exception as e:
             variant.pushed = False

@@ -121,6 +121,8 @@ export async function startImport(payload: StartImportPayload) {
       currency: p.currency,
       tags: p.tags,
       images: p.images,
+      variants: p.variants ?? [],
+      options: p.options ?? [],
     })),
   }
   const r = await axios.post<{ job_id: string; status: string }>('/shopify/import', body)

@@ -351,19 +351,59 @@ class ShopifyClient:
         self,
         title: str,
         body_html: str,
-        price: str,
+        price: str = "0.00",
         tags: Iterable[str] = (),
         image_urls: Iterable[str] = (),
+        variants: Optional[list[dict]] = None,
+        options: Optional[list[dict]] = None,
     ) -> dict:
-        payload = {
-            "product": {
-                "title": title,
-                "body_html": body_html,
-                "status": "draft",
-                "tags": ", ".join(tags),
-                "variants": [{"price": str(price)}],
-                "images": [{"src": u} for u in image_urls if u],
-            }
+        # Build variants payload: preserve option1/2/3, price, sku, barcode,
+        # compare_at_price from source when provided; fall back to a single
+        # variant with just the price for simple products.
+        if variants:
+            variants_payload: list[dict] = []
+            for v in variants:
+                vp: dict[str, Any] = {}
+                for key in ("option1", "option2", "option3", "sku", "barcode"):
+                    val = v.get(key)
+                    if val is not None and val != "":
+                        vp[key] = val
+                vprice = v.get("price")
+                vp["price"] = str(vprice) if vprice not in (None, "") else str(price)
+                cap = v.get("compare_at_price")
+                if cap not in (None, ""):
+                    vp["compare_at_price"] = str(cap)
+                variants_payload.append(vp)
+        else:
+            variants_payload = [{"price": str(price)}]
+
+        product: dict[str, Any] = {
+            "title": title,
+            "body_html": body_html,
+            "status": "draft",
+            "tags": ", ".join(tags),
+            "variants": variants_payload,
+            "images": [{"src": u} for u in image_urls if u],
         }
-        data = await self._request("POST", "/products.json", json=payload)
+
+        # options are required by Shopify whenever a variant uses option1/2/3.
+        # Shape: [{name: "Size", position: 1, values: ["S","M","L"]}, ...].
+        # Shopify also accepts just [{name}, …] and derives values from variants,
+        # which keeps us robust to malformed option payloads scraped from the
+        # public JSON feed.
+        if options:
+            clean_opts: list[dict] = []
+            for idx, o in enumerate(options):
+                name = (o.get("name") or "").strip()
+                if not name:
+                    continue
+                entry: dict[str, Any] = {"name": name, "position": o.get("position") or idx + 1}
+                values = o.get("values") or []
+                if isinstance(values, list) and values:
+                    entry["values"] = [str(x) for x in values if str(x).strip()]
+                clean_opts.append(entry)
+            if clean_opts:
+                product["options"] = clean_opts
+
+        data = await self._request("POST", "/products.json", json={"product": product})
         return data.get("product", {})

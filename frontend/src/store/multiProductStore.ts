@@ -11,6 +11,24 @@ export interface ShopifyConnection {
   created_at: string
 }
 
+export interface PreviewVariant {
+  id: string
+  title: string
+  price: string
+  compare_at_price?: string | null
+  sku?: string
+  barcode?: string
+  option1?: string | null
+  option2?: string | null
+  option3?: string | null
+}
+
+export interface PreviewOption {
+  name: string
+  position?: number | null
+  values: string[]
+}
+
 export interface PreviewProduct {
   id: string
   title: string
@@ -22,6 +40,8 @@ export interface PreviewProduct {
   description: string
   tags: string[]
   images: { id: string; src: string; alt: string }[]
+  variants: PreviewVariant[]
+  options: PreviewOption[]
 }
 
 export interface ImagePromptSlot {
