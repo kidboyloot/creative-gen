@@ -307,6 +307,29 @@ async def generate_image(
     output_path: str,
     model_id: str = "flux-dev",
 ) -> str:
+    # ── muapi-first when configured ──
+    from services.muapi_client import is_muapi_configured, muapi_run, muapi_upload, extract_url
+    from services.model_catalog import MODEL_CATALOG
+    if is_muapi_configured():
+        catalog = next(
+            (m for cat in ("i2i", "t2i") for m in MODEL_CATALOG.get(cat, []) if m["id"] == model_id),
+            None,
+        )
+        muapi_endpoint = catalog["endpoint"] if catalog else model_id
+        image_url = await muapi_upload(reference_path)
+        payload = {"prompt": prompt or "", "image_url": image_url}
+        if catalog and catalog.get("aspect_ratios") and fmt in catalog["aspect_ratios"]:
+            payload["aspect_ratio"] = fmt
+        if catalog and catalog.get("resolutions"):
+            payload["resolution"] = catalog["resolution_default"] or catalog["resolutions"][0]
+        result = await muapi_run(muapi_endpoint, payload)
+        img_url = extract_url(result)
+        if not img_url:
+            raise RuntimeError(f"muapi returned no URL: {result}")
+        await _download_file(img_url, output_path)
+        return output_path
+
+    # ── fal.ai fallback (only when MUAPI_KEY not set) ──
     w, h = DIMENSIONS[fmt]
     endpoint = MODELS.get(model_id, MODELS["flux-dev"])["endpoint"]
 
@@ -336,6 +359,30 @@ async def generate_image_from_text(
     model_id: str = "flux-dev",
 ) -> str:
     """Generate image from text only (no reference image)."""
+    # ── muapi-first when configured ──
+    from services.muapi_client import is_muapi_configured, muapi_run, extract_url
+    from services.model_catalog import MODEL_CATALOG
+    if is_muapi_configured():
+        catalog = next(
+            (m for cat in ("t2i", "i2i") for m in MODEL_CATALOG.get(cat, []) if m["id"] == model_id),
+            None,
+        )
+        muapi_endpoint = catalog["endpoint"] if catalog else model_id
+        payload = {"prompt": prompt}
+        if catalog and catalog.get("aspect_ratios") and fmt in catalog["aspect_ratios"]:
+            payload["aspect_ratio"] = fmt
+        elif catalog and catalog.get("aspect_ratios") and "auto" in catalog["aspect_ratios"]:
+            payload["aspect_ratio"] = "auto"
+        if catalog and catalog.get("resolutions"):
+            payload["resolution"] = catalog.get("resolution_default") or catalog["resolutions"][0]
+        result = await muapi_run(muapi_endpoint, payload)
+        img_url = extract_url(result)
+        if not img_url:
+            raise RuntimeError(f"muapi returned no URL for model '{model_id}': {result}")
+        await _download_file(img_url, output_path)
+        return output_path
+
+    # ── fal.ai fallback ──
     w, h = DIMENSIONS.get(fmt, (1080, 1080))
 
     # Text-to-image endpoints (not img2img)
@@ -608,14 +655,37 @@ async def generate_video_from_image(
     generate_audio: bool = True,
 ) -> str:
     """Generate a video directly from a reference image."""
+    # ── muapi-first when configured ──
+    from services.muapi_client import is_muapi_configured, muapi_run, muapi_upload, extract_url
+    from services.model_catalog import MODEL_CATALOG
+    if is_muapi_configured():
+        catalog_entry = next(
+            (m for cat in ("i2v", "t2v") for m in MODEL_CATALOG.get(cat, []) if m["id"] == model_id),
+            None,
+        )
+        muapi_endpoint = catalog_entry["endpoint"] if catalog_entry else model_id
+        image_url = await muapi_upload(reference_path)
+        payload = {"image_url": image_url, "prompt": prompt or "smooth cinematic motion"}
+        if catalog_entry and catalog_entry.get("aspect_ratios") and aspect_ratio in catalog_entry["aspect_ratios"]:
+            payload["aspect_ratio"] = aspect_ratio
+        if catalog_entry and catalog_entry.get("resolutions") and resolution in catalog_entry["resolutions"]:
+            payload["resolution"] = resolution
+        if duration and duration != "auto":
+            payload["duration"] = duration
+        result = await muapi_run(muapi_endpoint, payload)
+        video_url = extract_url(result)
+        if not video_url:
+            raise RuntimeError(f"muapi returned no URL for video model '{model_id}': {result}")
+        await _download_file(video_url, output_path)
+        return output_path
+
+    # ── fal.ai fallback ──
     model = VIDEO_MODELS.get(model_id)
     if not model:
-        # Catalog-only model — route via muapi.ai
-        from services.muapi_client import muapi_run, muapi_upload, extract_url, is_muapi_configured
-        from services.model_catalog import MODEL_CATALOG
+        # Catalog-only model — route via muapi.ai (only reached if no MUAPI_KEY)
         if not is_muapi_configured():
             raise RuntimeError(
-                f"Video model '{model_id}' has no fal.ai endpoint. Set MUAPI_KEY in backend/.env to use muapi.ai models."
+                f"Video model '{model_id}' has no fal.ai endpoint. Set MUAPI_KEY in backend/.env."
             )
         catalog_entry = next(
             (m for cat in ("t2v", "i2v") for m in MODEL_CATALOG.get(cat, []) if m["id"] == model_id),
@@ -844,35 +914,36 @@ async def generate_lipsync(
     `input_mode` is 'image' or 'video'. The fal.ai sync model accepts the same
     `video_url` field for both — we just upload the file & pass the URL.
     """
-    model = LIPSYNC_MODELS.get(model_id)
-    if not model:
-        # Catalog-only — route via muapi.ai
-        from services.muapi_client import muapi_run, muapi_upload, extract_url, is_muapi_configured
-        from services.model_catalog import MODEL_CATALOG
-        if not is_muapi_configured():
-            raise RuntimeError(
-                f"Lipsync model '{model_id}' has no fal.ai endpoint. Set MUAPI_KEY in backend/.env."
-            )
+    # ── muapi-first when configured ──
+    from services.muapi_client import is_muapi_configured, muapi_run, muapi_upload, extract_url
+    from services.model_catalog import MODEL_CATALOG
+    if is_muapi_configured():
         catalog_entry = next(
             (m for m in MODEL_CATALOG.get("lipsync", []) if m["id"] == model_id),
             None,
         )
-        if not catalog_entry:
-            raise RuntimeError(f"Unknown lipsync model: {model_id}")
+        muapi_endpoint = catalog_entry["endpoint"] if catalog_entry else model_id
         media_url = await muapi_upload(media_path)
         audio_url = await muapi_upload(audio_path)
         muapi_payload = {
             ("image_url" if input_mode == "image" else "video_url"): media_url,
             "audio_url": audio_url,
         }
-        if catalog_entry.get("resolutions") and resolution in catalog_entry["resolutions"]:
+        if catalog_entry and catalog_entry.get("resolutions") and resolution in catalog_entry["resolutions"]:
             muapi_payload["resolution"] = resolution
-        result = await muapi_run(catalog_entry["endpoint"], muapi_payload)
+        result = await muapi_run(muapi_endpoint, muapi_payload)
         video_url = extract_url(result)
         if not video_url:
-            raise RuntimeError(f"muapi response missing video URL: {result}")
+            raise RuntimeError(f"muapi returned no URL for lipsync model '{model_id}': {result}")
         await _download_file(video_url, output_path)
         return output_path
+
+    # ── fal.ai fallback ──
+    model = LIPSYNC_MODELS.get(model_id)
+    if not model:
+        raise RuntimeError(
+            f"Lipsync model '{model_id}' has no fal.ai endpoint. Set MUAPI_KEY in backend/.env."
+        )
 
     endpoint = model["endpoint"]
 
