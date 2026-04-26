@@ -32,6 +32,8 @@ CREDIT_COSTS = {
     "enhance": 0,     # free prompt enhancement
     "shopify_translate": 1,   # 1 credit per (product × locale)
     "shopify_image_gen": 1,   # 1 credit per AI image slot in the Shopify flow
+    "lipsync": 3,     # 3 credits per lip-sync render
+    "cinema": 2,      # 2 credits per cinema shot
 }
 
 

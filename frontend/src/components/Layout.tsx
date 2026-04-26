@@ -13,7 +13,7 @@ import {
   Search, Home, Users, Image, Video, Grid3X3, Lock,
   Clock, FolderOpen, ChevronDown, Zap, LogIn, LogOut, Workflow, LayoutGrid, Languages,
   Package, Megaphone, Palette, Coins, User, Mic, Lightbulb, Bot, Paintbrush, UserCircle, BookOpen, Gem,
-  Crown, FileEdit, Sparkles, Copy
+  Crown, FileEdit, Sparkles, Copy, Camera
 } from 'lucide-react'
 import clsx from 'clsx'
 import axios from 'axios'
@@ -28,8 +28,10 @@ interface NavSection { label: string; key: string; items: NavItem[] }
 const navSections: NavSection[] = [
   {
     label: 'Creative Tools', key: 'creative', items: [
-      { to: '/generate', label: 'Image Generator', icon: Image },
-      { to: '/video', label: 'Video Generator', icon: Video },
+      { to: '/generate', label: 'Image Studio', icon: Image },
+      { to: '/video', label: 'Video Studio', icon: Video },
+      { to: '/lipsync', label: 'Lip Sync', icon: Mic },
+      { to: '/cinema', label: 'Cinema Studio', icon: Camera },
       { to: '/collage', label: 'Collage Maker', icon: LayoutGrid },
       { to: '/image-edit', label: 'Image Editor', icon: Paintbrush, minPlan: 'pro', badge: 'PRO' },
       { to: '/avatar', label: 'AI Avatar', icon: UserCircle, minPlan: 'pro', badge: 'PRO' },

@@ -8,6 +8,8 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import GeneratePage from './pages/GeneratePage'
 import VideoPage from './pages/VideoPage'
+import LipSyncPage from './pages/LipSyncPage'
+import CinemaPage from './pages/CinemaPage'
 import HistoryPage from './pages/HistoryPage'
 import ProjectsPage from './pages/ProjectsPage'
 import SpacesPage from './pages/SpacesPage'
@@ -57,6 +59,8 @@ export default function App() {
           {/* Free tools */}
           <Route path="generate" element={<GeneratePage />} />
           <Route path="video" element={<VideoPage />} />
+          <Route path="lipsync" element={<LipSyncPage />} />
+          <Route path="cinema" element={<CinemaPage />} />
           <Route path="collage" element={<CollagePage />} />
           <Route path="voice" element={<VoicePage />} />
           <Route path="image-translator" element={<ImageTranslatorPage />} />

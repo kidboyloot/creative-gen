@@ -202,4 +202,80 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* ── Studio scrollbar ── */
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+}
+
+@layer components {
+  /* ── Studio: hero icon container (lime-glow + teal panel) ── */
+  .studio-hero-icon {
+    @apply relative w-24 h-24 md:w-32 md:h-32 rounded-3xl flex items-center justify-center border border-white/5 overflow-hidden;
+    background-color: rgba(19, 78, 74, 0.4);
+  }
+  .studio-hero-glow {
+    @apply absolute inset-0 rounded-full opacity-40 group-hover:opacity-70 transition-opacity duration-1000;
+    background-color: rgba(217, 255, 0, 0.2);
+    filter: blur(100px);
+  }
+  .studio-hero-inner {
+    @apply relative z-10 w-16 h-16 rounded-2xl flex items-center justify-center;
+    background-color: rgba(217, 255, 0, 0.1);
+    border: 1px solid rgba(217, 255, 0, 0.2);
+    box-shadow: 0 0 20px rgba(217, 255, 0, 0.4);
+    color: #d9ff00;
+  }
+  .studio-hero-title {
+    @apply text-2xl sm:text-4xl md:text-7xl font-black text-white tracking-widest uppercase mb-4 text-center px-4;
+  }
+  .studio-hero-title::selection { background: #d9ff00; color: black; }
+
+  /* ── Studio: floating prompt bar ── */
+  .studio-prompt-bar {
+    @apply w-full backdrop-blur-xl border border-white/10 rounded-[1.5rem] md:rounded-[2.5rem] p-3 md:p-5 flex flex-col gap-3 md:gap-5;
+    background: rgba(17, 17, 17, 0.9);
+    box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.8);
+  }
+
+  /* ── Studio: control button (model/aspect/quality picker) ── */
+  .studio-ctrl-btn {
+    @apply flex items-center gap-1.5 md:gap-2.5 px-3 md:px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl transition-all border border-white/5 whitespace-nowrap text-xs font-bold text-white;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .studio-ctrl-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #d9ff00;
+  }
+
+  /* ── Studio: pill button (small toggle) ── */
+  .studio-pill {
+    @apply px-4 py-1.5 rounded-xl text-xs font-bold transition-all border border-white/10 text-white/50;
+  }
+  .studio-pill:hover { @apply border-white/30 text-white; }
+  .studio-pill.active {
+    @apply text-[#d9ff00];
+    border-color: #d9ff00;
+    background: rgba(217, 255, 0, 0.1);
+  }
+
+  /* ── Studio: generate button (lime CTA) ── */
+  .studio-generate-btn {
+    @apply h-[56px] px-8 rounded-xl font-black text-xs uppercase tracking-wide transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed;
+    background: #d9ff00;
+    color: black;
+  }
+  .studio-generate-btn:not(:disabled):hover {
+    background: white;
+    box-shadow: 0 0 20px rgba(217, 255, 0, 0.4);
+  }
+
+  /* ── Studio: secondary action button ── */
+  .studio-secondary-btn {
+    @apply px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all border border-white/5 text-white;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+  }
+  .studio-secondary-btn:hover { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.2); }
 }

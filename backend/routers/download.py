@@ -37,6 +37,24 @@ async def serve_video_file(job_id: str, filename: str):
     return FileResponse(file_path, media_type=MEDIA_TYPES.get(ext, "application/octet-stream"))
 
 
+@router.get("/files/lipsync/{job_id}/{filename}")
+async def serve_lipsync_file(job_id: str, filename: str):
+    file_path = os.path.join(OUTPUT_DIR, "lipsync", job_id, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(404, "File not found.")
+    ext = filename.rsplit(".", 1)[-1].lower()
+    return FileResponse(file_path, media_type=MEDIA_TYPES.get(ext, "application/octet-stream"))
+
+
+@router.get("/files/cinema/{job_id}/{filename}")
+async def serve_cinema_file(job_id: str, filename: str):
+    file_path = os.path.join(OUTPUT_DIR, "cinema", job_id, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(404, "File not found.")
+    ext = filename.rsplit(".", 1)[-1].lower()
+    return FileResponse(file_path, media_type=MEDIA_TYPES.get(ext, "application/octet-stream"))
+
+
 @router.get("/files/avatars/{filename}")
 async def serve_avatar_file(filename: str):
     file_path = os.path.join(OUTPUT_DIR, "..", "uploads", "avatars", filename)

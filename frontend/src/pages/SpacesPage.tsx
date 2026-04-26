@@ -14,14 +14,14 @@ export default function SpacesPage() {
 
   if (!showCanvas) {
     return (
-      <div className="h-full flex flex-col bg-surface-700">
+      <div className="h-full flex flex-col bg-studio-app-bg">
         <TemplateGrid onSelect={openCanvas} />
       </div>
     )
   }
 
   return (
-    <div className="h-full flex flex-col bg-surface-700">
+    <div className="h-full flex flex-col bg-studio-app-bg">
       <SpacesCanvas onShowTemplates={() => setShowCanvas(false)} />
     </div>
   )

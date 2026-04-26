@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { useQuery } from '@tanstack/react-query'
-import { Video, Loader2, Play, Volume2, VolumeX } from 'lucide-react'
+import { Video, Loader2, Volume2, VolumeX } from 'lucide-react'
 import clsx from 'clsx'
-import UploadZone from '../components/UploadZone'
-import ModelSelect from '../components/ModelSelect'
-import Dropdown from '../components/ui/Dropdown'
 import { useVideoStore } from '../store/videoStore'
-import { useVideoStatus, VideoAsset } from '../hooks/useVideoStatus'
+import { useVideoStatus } from '../hooks/useVideoStatus'
+import { useAuthStore } from '../store/authStore'
+import {
+  StudioControlButton, StudioModelDropdown, StudioOptionDropdown,
+  StudioImageThumb,
+} from '../components/StudioControls'
+import StudioResultCanvas from '../components/StudioResultCanvas'
 
 interface VideoModelOption {
   id: string
@@ -16,9 +19,9 @@ interface VideoModelOption {
   supports_prompt: boolean
 }
 
-const RESOLUTIONS = ['480p', '720p'] as const
-const ASPECT_RATIOS = ['auto', '9:16', '16:9', '1:1', '4:3', '3:4', '21:9']
-const DURATIONS = ['auto', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15']
+const RESOLUTIONS = ['360p', '480p', '540p', '720p', '1080p']
+const ASPECT_RATIOS = ['auto', '9:16', '16:9', '1:1', '4:3', '3:4', '21:9', '2:3', '3:2', '5:4', '4:5', '5:6', '6:5', '1:2', '2:1', '9:21']
+const DURATIONS = ['auto', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '18', '20', '25', '30']
 
 export default function VideoPage() {
   const {
@@ -29,6 +32,7 @@ export default function VideoPage() {
   } = useVideoStore()
 
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [requestError, setRequestError] = useState<string | null>(null)
   const { data: jobStatus } = useVideoStatus(jobId)
   const { data: models = [] } = useQuery<VideoModelOption[]>({
@@ -38,7 +42,21 @@ export default function VideoPage() {
 
   const selectedModel = models.find((m) => m.id === model)
   const activeJobRunning = jobStatus?.status === 'running' || jobStatus?.status === 'pending'
-  const canGenerate = !!imageId && !loading && !activeJobRunning
+
+  async function handleUpload(file: File) {
+    setUploading(true)
+    const preview = URL.createObjectURL(file)
+    const fd = new FormData()
+    fd.append('file', file)
+    try {
+      const res = await axios.post<{ image_id: string }>('/upload', fd)
+      setImageId(res.data.image_id, preview)
+    } catch (e: any) {
+      alert(`Upload failed: ${e?.response?.data?.detail || e.message}`)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   async function handleGenerate() {
     if (!imageId) return
@@ -66,275 +84,177 @@ export default function VideoPage() {
 
   const progress = jobStatus ? Math.round((jobStatus.done / Math.max(jobStatus.total, 1)) * 100) : 0
   const isRunning = loading || activeJobRunning
+  const promptDisabled = selectedModel ? !selectedModel.supports_prompt : false
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Video Generator</h1>
-        <p className="text-gray-400 text-sm mt-1">Animate a reference image into a short video clip.</p>
+    <div className="w-full h-full flex flex-col items-center bg-[#050505] relative p-4 md:p-6 overflow-y-auto custom-scrollbar overflow-x-hidden">
+      {/* HERO */}
+      <div className="flex flex-col items-center mb-10 md:mb-20 animate-fade-in-up transition-all duration-700">
+        <div className="mb-10 relative group">
+          <div className="absolute inset-0 bg-[#d9ff00]/20 blur-[100px] rounded-full opacity-40 group-hover:opacity-70 transition-opacity duration-1000" />
+          <div className="relative w-24 h-24 md:w-32 md:h-32 bg-teal-900/40 rounded-3xl flex items-center justify-center border border-white/5 overflow-hidden">
+            <Video size={80} strokeWidth={1} className="text-[#d9ff00] opacity-20 absolute -right-4 -bottom-4" />
+            <div className="w-16 h-16 bg-[#d9ff00]/10 rounded-2xl flex items-center justify-center border border-[#d9ff00]/20 shadow-studio-glow relative z-10">
+              <Video size={32} strokeWidth={1.5} className="text-[#d9ff00]" />
+            </div>
+            <div className="absolute top-4 right-4 text-[#d9ff00] animate-pulse">✨</div>
+          </div>
+        </div>
+        <h1 className="text-2xl sm:text-4xl md:text-7xl font-black text-white tracking-widest uppercase mb-4 text-center px-4">Video Studio</h1>
+        <p className="text-[#a1a1aa] text-sm font-medium tracking-wide opacity-60">Animate images into stunning AI videos with motion effects</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Left: inputs */}
-        <div className="space-y-6">
+      {/* PROMPT BAR */}
+      <div className="w-full max-w-4xl relative z-40 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+        <div className="w-full bg-[#111]/90 backdrop-blur-xl border border-white/10 rounded-[1.5rem] md:rounded-[2.5rem] p-3 md:p-5 flex flex-col gap-3 md:gap-5 shadow-studio-3xl">
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Reference Image</label>
-            <UploadZone
-              imagePreview={imagePreview}
-              onUpload={setImageId}
+          {/* Top row: thumb + textarea */}
+          <div className="flex items-start gap-3 md:gap-5 px-2">
+            <StudioImageThumb
+              imageUrl={imagePreview}
+              uploading={uploading}
+              onUpload={handleUpload}
               onClear={() => setImageId('', '')}
+              size={52}
+            />
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              disabled={promptDisabled}
+              placeholder={promptDisabled
+                ? 'This model uses image only — no prompt needed'
+                : (imagePreview ? 'Describe the motion or effect (optional)' : 'Upload an image to enable video generation')}
+              rows={1}
+              className="flex-1 bg-transparent border-none text-white text-base md:text-xl placeholder:text-[#52525b] focus:outline-none resize-none pt-2 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-50"
+              onInput={(e) => {
+                const el = e.target as HTMLTextAreaElement
+                el.style.height = 'auto'
+                el.style.height = Math.min(el.scrollHeight, window.innerWidth < 768 ? 150 : 250) + 'px'
+              }}
             />
           </div>
 
-          {/* Prompt */}
-          {(selectedModel?.supports_prompt ?? true) && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Motion Prompt <span className="text-gray-600 font-normal">(optional)</span>
-              </label>
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                rows={3}
-                placeholder="e.g. smooth cinematic zoom out, slow motion waves…"
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500/50 resize-none transition-colors"
+          {/* Bottom row: controls + GENERATE */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 px-2 pt-4 border-t border-white/5">
+            <div className="flex items-center gap-1.5 md:gap-2.5 relative overflow-x-auto scrollbar-hide pb-1 sm:pb-0">
+              <StudioModelDropdown models={models} value={model} onChange={setModel} tooltip="Select video model" />
+
+              <StudioOptionDropdown
+                iconNode={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="opacity-60 text-[#a1a1aa]"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /></svg>}
+                options={ASPECT_RATIOS}
+                value={aspectRatio}
+                onChange={setAspectRatio}
+                tooltip="Aspect ratio"
+              />
+
+              <StudioOptionDropdown
+                iconNode={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="opacity-60 text-[#a1a1aa]"><path d="M6 2L3 6v15a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" /></svg>}
+                options={RESOLUTIONS}
+                value={resolution}
+                onChange={(v) => setResolution(v as any)}
+                tooltip="Resolution"
+              />
+
+              <StudioOptionDropdown
+                iconNode={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="opacity-60 text-[#a1a1aa]"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+                options={DURATIONS}
+                value={duration}
+                onChange={setDuration}
+                tooltip="Duration (seconds)"
+              />
+
+              <button
+                onClick={() => setGenerateAudio(!generateAudio)}
+                title="Toggle audio generation"
+                className={clsx(
+                  'flex items-center gap-1.5 px-3 md:px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl transition-all border text-xs font-bold whitespace-nowrap',
+                  generateAudio
+                    ? 'bg-[#d9ff00]/20 border-[#d9ff00]/40 text-[#d9ff00]'
+                    : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10'
+                )}
+              >
+                {generateAudio ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                <span>{generateAudio ? 'Audio' : 'Mute'}</span>
+              </button>
+
+              <StudioControlButton
+                iconNode={<span className="text-[10px] font-black text-[#a1a1aa]">×{count}</span>}
+                label={`${count} variant${count !== 1 ? 's' : ''}`}
+                tooltip="Click to change variants"
+                onClick={() => setCount(count >= 10 ? 1 : count + 1)}
+                noChevron
               />
             </div>
-          )}
 
-          {/* Model */}
-          <ModelSelect models={models} value={model} onChange={setModel} label="Video Model" />
-
-          {/* Resolution */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Resolution</label>
-            <div className="flex gap-2">
-              {RESOLUTIONS.map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setResolution(r)}
-                  className={clsx(
-                    'flex-1 py-2 text-sm rounded-lg border transition-colors',
-                    resolution === r
-                      ? 'bg-brand-600 border-brand-600 text-white'
-                      : 'bg-white/[0.03] border-white/[0.08] text-gray-400 hover:border-white/[0.2]'
-                  )}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Aspect Ratio */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Aspect Ratio</label>
-            <div className="flex flex-wrap gap-2">
-              {ASPECT_RATIOS.map((a) => (
-                <button
-                  key={a}
-                  onClick={() => setAspectRatio(a)}
-                  className={clsx(
-                    'px-3 py-1.5 text-sm rounded-lg border transition-colors',
-                    aspectRatio === a
-                      ? 'bg-brand-600 border-brand-600 text-white'
-                      : 'bg-white/[0.03] border-white/[0.08] text-gray-400 hover:border-white/[0.2]'
-                  )}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Duration */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Duration</label>
-            <Dropdown
-              value={duration}
-              onChange={setDuration}
-              searchable={false}
-              options={DURATIONS.map((d) => ({
-                value: d,
-                label: d === 'auto' ? 'Auto (model decides)' : `${d} seconds`,
-              }))}
-            />
-          </div>
-
-          {/* Audio toggle */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Audio</label>
             <button
-              onClick={() => setGenerateAudio(!generateAudio)}
-              className={clsx(
-                'w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors text-left',
-                generateAudio
-                  ? 'border-brand-500 bg-brand-600/10'
-                  : 'border-white/[0.08] bg-white/[0.03] hover:border-white/[0.15]'
-              )}
+              onClick={handleGenerate}
+              disabled={!imageId || isRunning}
+              className="bg-[#d9ff00] text-black px-6 md:px-8 py-3 md:py-3.5 rounded-xl md:rounded-[1.5rem] font-black text-sm md:text-base hover:bg-white hover:shadow-studio-glow hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2.5 w-full sm:w-auto shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              {generateAudio
-                ? <Volume2 size={18} className="text-brand-400 flex-shrink-0" />
-                : <VolumeX size={18} className="text-gray-500 flex-shrink-0" />
-              }
-              <div>
-                <p className="text-sm font-medium text-white">
-                  {generateAudio ? 'Generate audio' : 'No audio'}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {generateAudio
-                    ? 'Effects, ambient sound & speech sync'
-                    : 'Silent video output'}
-                </p>
-              </div>
-              <div className={clsx(
-                'ml-auto w-9 h-5 rounded-full transition-colors flex-shrink-0',
-                generateAudio ? 'bg-brand-500' : 'bg-white/[0.1]'
-              )}>
-                <div className={clsx(
-                  'w-4 h-4 rounded-full bg-white shadow mt-0.5 transition-transform',
-                  generateAudio ? 'translate-x-4' : 'translate-x-0.5'
-                )} />
-              </div>
+              {isRunning ? (
+                <><Loader2 size={16} className="animate-spin" /> Generating…</>
+              ) : (
+                <>Generate ✨</>
+              )}
             </button>
           </div>
+        </div>
 
-          {/* Variants */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Variants: <span className="text-brand-500 font-bold">{count}</span>
-            </label>
-            <input
-              type="range" min={1} max={10} value={count}
-              onChange={(e) => setCount(Number(e.target.value))}
-              className="w-full accent-brand-500"
-            />
-            <div className="flex justify-between text-xs text-gray-600 mt-1">
-              <span>1</span><span>10</span>
-            </div>
+        {!imageId && (
+          <p className="text-[11px] text-center text-[#52525b] mt-3 uppercase tracking-widest font-bold">↑ Upload a reference image to enable</p>
+        )}
+
+        {requestError && (
+          <div className="mt-3 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
+            <p className="text-xs font-bold text-red-400 mb-0.5 uppercase tracking-wider">Request failed</p>
+            <p className="text-xs text-red-300/70 font-mono break-all">{requestError}</p>
           </div>
-
-          {requestError && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
-              <p className="text-xs font-medium text-red-400 mb-0.5">Request failed</p>
-              <p className="text-xs text-red-300/70 font-mono break-all">{requestError}</p>
-            </div>
-          )}
-
-          {!imageId && (
-            <p className="text-xs text-center text-gray-500">Upload a reference image to enable generation</p>
-          )}
-
-          <button
-            onClick={handleGenerate}
-            disabled={!imageId || isRunning}
-            className={clsx(
-              'w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all',
-              imageId && !isRunning
-                ? 'bg-brand-600 hover:bg-brand-700 text-white'
-                : 'bg-white/[0.04] text-gray-500 cursor-not-allowed'
-            )}
-          >
-            {isRunning ? (
-              <><Loader2 size={17} className="animate-spin" /> Generating…</>
-            ) : (
-              <><Video size={17} /> Generate {count} Video{count !== 1 ? 's' : ''}</>
-            )}
-          </button>
-
-          {(jobStatus?.status === 'done' || jobStatus?.status === 'failed') && (
-            <button
-              onClick={() => { setJobId(null); setRequestError(null) }}
-              className="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
-            >
-              Clear & generate again
-            </button>
-          )}
-        </div>
-
-        {/* Right: progress + results */}
-        <div className="space-y-4">
-          {jobStatus && (
-            <>
-              <div className="bg-white/[0.04] rounded-xl p-4 border border-white/[0.08]">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-400">Progress</span>
-                  <span className="font-medium">{jobStatus.done} / {jobStatus.total} videos</span>
-                </div>
-                <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-brand-500 rounded-full transition-all duration-500"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <div className="flex justify-between mt-2">
-                  <span className={clsx('text-xs capitalize', {
-                    'text-yellow-400': jobStatus.status === 'running' || jobStatus.status === 'pending',
-                    'text-green-400': jobStatus.status === 'done',
-                    'text-red-400': jobStatus.status === 'failed',
-                  })}>
-                    {jobStatus.status}
-                  </span>
-                  <span className="text-xs text-gray-500">{progress}%</span>
-                </div>
-              </div>
-
-              {jobStatus.errors?.length > 0 && (
-                <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 space-y-1">
-                  <p className="text-xs font-medium text-red-400 mb-1">Generation errors</p>
-                  {jobStatus.errors.map((err, i) => (
-                    <p key={i} className="text-xs text-red-300/70 font-mono break-all">{err}</p>
-                  ))}
-                </div>
-              )}
-
-              {jobStatus.assets.length > 0 && (
-                <VideoGallery assets={jobStatus.assets} />
-              )}
-            </>
-          )}
-
-          {!jobStatus && (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-600 text-sm">
-              <Play size={40} className="mb-3 opacity-20" />
-              <p>Your generated videos will appear here</p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
+
+      {/* PROGRESS — only while running */}
+      {jobStatus && jobStatus.status !== 'done' && jobStatus.assets.length === 0 && (
+        <div className="w-full max-w-4xl mt-8 animate-fade-in-up">
+          <div className="bg-[#141414] border border-white/10 rounded-2xl p-4">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-[#a1a1aa] uppercase text-[10px] tracking-widest font-bold">Generating…</span>
+              <span className="font-bold text-white">{jobStatus.done} / {jobStatus.total}</span>
+            </div>
+            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full bg-[#d9ff00] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+          {jobStatus.errors?.length > 0 && (
+            <div className="mt-3 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 space-y-1">
+              <p className="text-xs font-bold text-red-400 mb-1 uppercase tracking-wider">Generation errors</p>
+              {jobStatus.errors.map((err, i) => (
+                <p key={i} className="text-xs text-red-300/70 font-mono break-all">{err}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* RESULTS — Higgsfield-style horizontal filmstrip + lightbox */}
+      {jobStatus && jobStatus.assets.length > 0 && (
+        <div className="w-full mt-8 px-2">
+          <StudioResultCanvas
+            assets={jobStatus.assets.map(a => ({
+              id: a.id,
+              url: a.url,
+              type: 'video',
+              format: a.format,
+              variant: a.variant,
+              prompt,
+              model: models.find(m => m.id === model)?.label || model,
+              user: useAuthStore.getState().user?.name || 'You',
+            }))}
+            onClose={() => setJobId(null)}
+            onRegenerate={handleGenerate}
+          />
+        </div>
+      )}
     </div>
   )
 }
 
-function VideoGallery({ assets }: { assets: VideoAsset[] }) {
-  return (
-    <div className="space-y-3">
-      <p className="text-sm font-medium text-gray-300">{assets.length} video{assets.length !== 1 ? 's' : ''} ready</p>
-      <div className="grid grid-cols-1 gap-3">
-        {assets.map((asset) => (
-          <div key={asset.id} className="bg-white/[0.04] rounded-xl border border-white/[0.08] overflow-hidden">
-            <video
-              src={asset.url}
-              controls
-              className="w-full rounded-t-xl"
-              style={{ maxHeight: 300 }}
-            />
-            <div className="flex items-center justify-between px-3 py-2">
-              <span className="text-xs text-gray-500">
-                Variant {asset.variant} · {asset.format}
-              </span>
-              <a
-                href={asset.url}
-                download={`video_${asset.variant}.mp4`}
-                className="text-xs text-brand-400 hover:text-brand-300 transition-colors"
-              >
-                Download
-              </a>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}

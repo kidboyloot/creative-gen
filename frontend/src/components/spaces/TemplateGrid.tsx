@@ -80,43 +80,58 @@ export default function TemplateGrid({ onSelect }: { onSelect: () => void }) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 max-w-4xl mx-auto w-full">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Spaces</h1>
-        <p className="text-gray-500 text-sm mt-1">Node-based workflow canvas. Connect nodes to build AI pipelines.</p>
-      </div>
+    <div className="flex-1 overflow-y-auto bg-studio-app-bg custom-scrollbar">
+      <div className="max-w-5xl mx-auto w-full px-6 py-12">
+        {/* Hero */}
+        <div className="flex flex-col items-center mb-12 animate-fade-in-up">
+          <div className="mb-8 relative group">
+            <div className="studio-hero-glow" />
+            <div className="studio-hero-icon">
+              <div className="studio-hero-inner">
+                <Wand2 size={32} />
+              </div>
+              <div className="absolute top-4 right-4 text-[#d9ff00] animate-pulse">⚡</div>
+            </div>
+          </div>
+          <h1 className="studio-hero-title">Workflow Studio</h1>
+          <p className="text-studio-secondary text-sm font-medium tracking-wide opacity-60 text-center max-w-xl">
+            Node-based canvas — connect nodes to build AI pipelines
+          </p>
+        </div>
 
-      {/* Start blank */}
-      <button
-        onClick={onSelect}
-        className="w-full flex items-center justify-between px-5 py-4 mb-6 rounded-2xl border border-dashed border-white/[0.1] hover:border-brand-500/40 hover:bg-brand-500/5 text-gray-500 hover:text-gray-200 transition-all duration-200 group"
-      >
-        <span className="text-sm font-medium">Start with blank canvas</span>
-        <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-      </button>
+        {/* Start blank */}
+        <button
+          onClick={onSelect}
+          className="w-full flex items-center justify-between px-6 py-5 mb-8 rounded-2xl border border-dashed border-white/10 hover:border-[#d9ff00]/40 hover:bg-[#d9ff00]/5 text-studio-secondary hover:text-white transition-all duration-200 group animate-fade-in-up"
+          style={{ animationDelay: '0.15s' }}
+        >
+          <span className="text-sm font-bold uppercase tracking-widest">Start with blank canvas</span>
+          <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform text-[#d9ff00]" />
+        </button>
 
-      <p className="section-label mb-4">Templates</p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {TEMPLATES.map(t => (
-          <button
-            key={t.id}
-            onClick={() => handleSelect(t)}
-            className="subtle-card p-5 text-left rounded-2xl group flex flex-col gap-3 hover:border-brand-500/30 transition-all"
-          >
-            <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center">
-              <t.icon size={18} className="text-brand-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white group-hover:text-brand-300 transition-colors">{t.title}</p>
-              <p className="text-[12px] text-gray-500 mt-1 leading-relaxed">{t.description}</p>
-            </div>
-            <div className="flex gap-1.5 flex-wrap">
-              {t.tags.map(tag => (
-                <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.05] text-gray-500">{tag}</span>
-              ))}
-            </div>
-          </button>
-        ))}
+        <p className="text-[10px] font-bold text-studio-muted uppercase tracking-widest mb-4 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>Templates</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in-up" style={{ animationDelay: '0.25s' }}>
+          {TEMPLATES.map(t => (
+            <button
+              key={t.id}
+              onClick={() => handleSelect(t)}
+              className="bg-studio-card-bg border border-white/10 p-5 text-left rounded-2xl group flex flex-col gap-3 hover:border-[#d9ff00]/40 hover:bg-studio-card-bg-2 transition-all"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#d9ff00]/10 border border-[#d9ff00]/20 flex items-center justify-center">
+                <t.icon size={18} className="text-[#d9ff00]" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white group-hover:text-[#d9ff00] transition-colors">{t.title}</p>
+                <p className="text-[12px] text-studio-secondary mt-1 leading-relaxed">{t.description}</p>
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {t.tags.map(tag => (
+                  <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-studio-muted uppercase tracking-wider font-bold">{tag}</span>
+                ))}
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
