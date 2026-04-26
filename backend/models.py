@@ -86,7 +86,7 @@ class GenerationJob(SQLModel, table=True):
     id: str = Field(default_factory=gen_uuid, primary_key=True)
     project_id: Optional[str] = Field(default=None, foreign_key="project.id")
     user_id: Optional[str] = Field(default=None, foreign_key="user.id")
-    image_id: str
+    image_id: Optional[str] = None  # null when generating from text only (no reference)
     prompt: str                   # kept for backwards compat (first prompt)
     prompts: Optional[str] = None  # JSON-encoded list of prompts
     formats: str  # JSON-encoded list e.g. '["1:1","9:16"]'
