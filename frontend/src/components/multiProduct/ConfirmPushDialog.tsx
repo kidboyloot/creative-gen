@@ -41,6 +41,7 @@ export default function ConfirmPushDialog({ open, onClose }: Props) {
             price: o.price,
             currency: o.currency,
             selected_image_ids: o.selectedImageIds,
+            selected_variant_ids: o.selectedVariantIds,
           }
         })
         .filter(Boolean) as any[]

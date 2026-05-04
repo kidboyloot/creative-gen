@@ -30,6 +30,18 @@ export interface ShopifyImportStatus {
     source_price: string
     source_currency: string
     source_images: { id: string; src: string; alt: string }[]
+    source_variants: {
+      id: string
+      title: string
+      price: string
+      compare_at_price?: string | null
+      sku?: string
+      barcode?: string
+      option1?: string | null
+      option2?: string | null
+      option3?: string | null
+    }[]
+    source_options: { name: string; position?: number | null; values: string[] }[]
     status: string
     shopify_draft_id: string | null
     shopify_draft_url: string | null
@@ -142,6 +154,7 @@ export interface PushVariantOverride {
   price?: string
   currency?: string
   selected_image_ids?: string[]
+  selected_variant_ids?: string[]
 }
 
 export async function pushDrafts(job_id: string, variant_ids: string[], overrides: PushVariantOverride[]) {

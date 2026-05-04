@@ -76,6 +76,7 @@ export interface ReviewOverride {
   price?: string
   currency?: string
   selectedImageIds?: string[]
+  selectedVariantIds?: string[]
 }
 
 interface MultiProductState {

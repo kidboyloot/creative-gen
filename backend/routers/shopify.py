@@ -104,6 +104,10 @@ class PushVariantOverride(BaseModel):
     price: Optional[str] = None
     currency: Optional[str] = None
     selected_image_ids: Optional[list[str]] = None
+    # Source variant IDs (size/color SKUs from the source product) to include
+    # in the Shopify draft. None = include all. Empty list is treated like None
+    # (Shopify rejects products with zero variants).
+    selected_variant_ids: Optional[list[str]] = None
 
 
 class PushRequest(BaseModel):
@@ -490,6 +494,8 @@ async def get_import_status(
                 "source_price": it.source_price,
                 "source_currency": it.source_currency,
                 "source_images": json.loads(it.source_images_json or "[]"),
+                "source_variants": json.loads(it.source_variants_json or "[]"),
+                "source_options": json.loads(it.source_options_json or "[]"),
                 "status": it.status,
                 "shopify_draft_id": it.shopify_draft_id,
                 "shopify_draft_url": it.shopify_draft_url,
@@ -527,6 +533,64 @@ async def get_import_status(
 
 
 # ── Push to Shopify ──
+
+async def _refetch_source_variants(
+    job: ShopifyImportJob, item: ShopifyImportItem, conn: ShopifyConnection
+) -> tuple[list[dict], list[dict]]:
+    """Re-fetch variants/options for an item from its source store.
+
+    Used as a fallback for items imported before the variant-preserving fix
+    (cb47d70) — those rows have ``source_variants_json='[]'`` and would push
+    as single-variant drafts otherwise. Same logic as the preview endpoint:
+    same-store → admin API, else → public products.json.
+    """
+    source_domain = parse_source_domain(job.collection_url) or conn.shop_domain
+    same_store = source_domain == conn.shop_domain
+    raw_product: Optional[dict] = None
+    try:
+        if same_store:
+            client = _client_from_connection(conn)
+            raw_product = await client.get_product(item.source_product_id)
+        else:
+            ident = parse_collection_identifier(job.collection_url)
+            handle = ident.get("handle") or "all"
+            products = await fetch_public_collection_products(source_domain, handle)
+            raw_product = next(
+                (p for p in products if str(p.get("id")) == str(item.source_product_id)),
+                None,
+            )
+    except Exception as e:
+        print(f"[shopify push] variant refetch failed for item {item.id}: {e}")
+        return [], []
+    if not raw_product:
+        return [], []
+    vs = raw_product.get("variants") or []
+    clean_variants = [
+        {
+            "id": str(v.get("id") or ""),
+            "title": v.get("title") or "",
+            "price": v.get("price") or "0.00",
+            "compare_at_price": v.get("compare_at_price"),
+            "sku": v.get("sku") or "",
+            "barcode": v.get("barcode") or "",
+            "option1": v.get("option1"),
+            "option2": v.get("option2"),
+            "option3": v.get("option3"),
+        }
+        for v in vs
+    ]
+    raw_options = raw_product.get("options") or []
+    clean_options = [
+        {
+            "name": (o.get("name") or "").strip(),
+            "position": o.get("position"),
+            "values": o.get("values") or [],
+        }
+        for o in raw_options
+        if (o.get("name") or "").strip()
+    ]
+    return clean_variants, clean_options
+
 
 @router.post("/import/{job_id}/push")
 async def push_to_shopify(
@@ -583,6 +647,26 @@ async def push_to_shopify(
 
         source_variants = json.loads(item.source_variants_json or "[]")
         source_options = json.loads(item.source_options_json or "[]")
+
+        # Items imported before cb47d70 have empty source_variants — refetch
+        # from the source store and persist so they don't push as single-variant.
+        if not source_variants:
+            source_variants, source_options = await _refetch_source_variants(job, item, conn)
+            if source_variants:
+                item.source_variants_json = json.dumps(source_variants)
+                item.source_options_json = json.dumps(source_options)
+                session.add(item)
+                session.commit()
+
+        # Apply per-locale variant selection from the override. None / empty
+        # = include all (Shopify rejects products with zero variants).
+        selected_variant_ids = override.selected_variant_ids if override else None
+        if selected_variant_ids:
+            allowed = {str(x) for x in selected_variant_ids}
+            filtered = [v for v in source_variants if str(v.get("id") or "") in allowed]
+            if filtered:
+                source_variants = filtered
+
         try:
             product = await client.create_draft_product(
                 title=title,

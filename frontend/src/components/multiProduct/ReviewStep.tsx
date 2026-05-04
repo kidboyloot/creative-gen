@@ -43,6 +43,17 @@ export default function ReviewStep() {
   }, [activeItem, itemAssets])
   const selectedImageIds = override?.selectedImageIds ?? defaultSelected
 
+  // Source product variants (size/color/SKU). Default = all selected.
+  const sourceVariants = activeItem?.source_variants || []
+  const sourceOptions = activeItem?.source_options || []
+  const allVariantIds = useMemo(() => sourceVariants.map((v) => v.id), [sourceVariants])
+  const selectedVariantIds = override?.selectedVariantIds ?? allVariantIds
+  // Hide the section for single-variant products (the lone "Default Title")
+  // and for old items that have no source_variants persisted yet.
+  const hasRealVariants =
+    sourceVariants.length > 1 ||
+    (sourceVariants.length === 1 && (sourceVariants[0].title || '').toLowerCase() !== 'default title')
+
   const readyToPush = variants.filter((v) => !v.pushed).length
 
   function toggleImage(id: string) {
@@ -50,6 +61,27 @@ export default function ReviewStep() {
     const current = override?.selectedImageIds ?? defaultSelected
     const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
     setOverride(activeVariant.id, { selectedImageIds: next })
+  }
+
+  // Variant selection is per-source-product, but storage is keyed by
+  // ShopifyImportVariant (one per locale). Apply the change to every locale
+  // that shares this item so the user only has to pick once.
+  function toggleSourceVariant(id: string) {
+    if (!activeVariant) return
+    const itemLocales = variants.filter((v) => v.item_id === activeVariant.item_id)
+    const current = override?.selectedVariantIds ?? allVariantIds
+    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
+    for (const lv of itemLocales) {
+      setOverride(lv.id, { selectedVariantIds: next })
+    }
+  }
+  function setAllSourceVariants(on: boolean) {
+    if (!activeVariant) return
+    const itemLocales = variants.filter((v) => v.item_id === activeVariant.item_id)
+    const next = on ? allVariantIds : []
+    for (const lv of itemLocales) {
+      setOverride(lv.id, { selectedVariantIds: next })
+    }
   }
 
   function updateTag(idx: number, v: string) {
@@ -237,6 +269,68 @@ export default function ReviewStep() {
                   </button>
                 </div>
               </div>
+
+              {hasRealVariants && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Variants ({selectedVariantIds.length}/{sourceVariants.length})
+                    </label>
+                    <div className="flex items-center gap-2 text-[10px]">
+                      <button
+                        onClick={() => setAllSourceVariants(true)}
+                        className="text-gray-400 hover:text-brand-400 transition"
+                      >
+                        All
+                      </button>
+                      <span className="text-gray-700">·</span>
+                      <button
+                        onClick={() => setAllSourceVariants(false)}
+                        className="text-gray-400 hover:text-red-400 transition"
+                      >
+                        None
+                      </button>
+                    </div>
+                  </div>
+                  {sourceOptions.length > 0 && (
+                    <p className="text-[10px] text-gray-500 mb-1.5">
+                      {sourceOptions.map((o) => o.name).join(' · ')} (kept in source language)
+                    </p>
+                  )}
+                  <div className="space-y-1 max-h-48 overflow-y-auto pr-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-1.5">
+                    {sourceVariants.map((sv) => {
+                      const on = selectedVariantIds.includes(sv.id)
+                      const label = [sv.option1, sv.option2, sv.option3].filter(Boolean).join(' / ') || sv.title || '—'
+                      return (
+                        <button
+                          key={sv.id}
+                          onClick={() => toggleSourceVariant(sv.id)}
+                          className={clsx(
+                            'w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded text-left transition',
+                            on ? 'bg-brand-500/10 border border-brand-500/40' : 'border border-transparent hover:bg-white/[0.04]',
+                          )}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div
+                              className={clsx(
+                                'w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0 transition',
+                                on ? 'bg-brand-500' : 'border border-white/[0.2]',
+                              )}
+                            >
+                              {on && <CheckSquare size={9} className="text-white" />}
+                            </div>
+                            <span className="text-xs text-white truncate">{label}</span>
+                            {sv.sku && (
+                              <span className="text-[9px] text-gray-500 font-mono truncate">{sv.sku}</span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-400 font-mono flex-shrink-0">{sv.price}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </section>
           </div>
         ) : (
